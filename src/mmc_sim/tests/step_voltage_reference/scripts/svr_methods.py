@@ -266,79 +266,121 @@ def analyse_step_up_voltage_signal(
         signal_col="Vdc",
         step_pu=0.02,
         tol_factor=0.05,
-        voltage_reference=640.,
-        settling_window=200  # default window for smoothing
+        voltage_reference=640.0,
+        mean_window=200
 ):
     """
-    Analyze a signal from a CSV file.
-    Settling time is calculated using a smoothed version of the signal.
-    """
-    # -----------------------------
-    # LOAD DATA
-    # -----------------------------
-    df = pd.read_csv(file_path)
-    steady_state_point = df.index.get_loc(df.index[df['TIME'] >= (step_time - 0.1)][0])
-    df = df.iloc[steady_state_point:, :]
-    df["R_ohms"] = float(str(file_path).split("\\")[-1].split("_")[-2][1:])  # Creating a column for the resistance.
-    df["H_mH"] = float(str(file_path).split("\\")[-1].split("_")[-4][1:])
-    df["C_uF"] = float(str(file_path).split("\\")[-1].split("_")[-3][1:])
-    t = df[time_col].values
-    y = df[signal_col].values
+    Analyse a step-up voltage signal from a CSV file.
 
-    # -----------------------------
+    Tcr:
+        Time from the voltage step until the signal first
+        enters the tolerance band.
+
+    Tcs:
+        Time from the voltage step until the signal enters
+        the tolerance band and remains there for the rest
+        of the simulation.
+
+    Xm:
+        Maximum voltage deviation above the target voltage.
+    """
+
+    # LOAD DATA
+    df = pd.read_csv(file_path)
+    start_points = df.index[df[time_col] >= (step_time - 0.1)]
+
+    if len(start_points) == 0:
+        raise ValueError(
+            f"No data found at or after "
+            f"{step_time - 0.1:.3f} s."
+        )
+
+    steady_state_point = df.index.get_loc(start_points[0])
+    df = df.iloc[steady_state_point:, :].copy()
+
+    # EXTRACT PARAMETERS FROM FILE NAME
+    file_name = str(file_path).split("\\")[-1]
+    try:
+        df["R_ohms"] = float(file_name.split("_")[-2][1:])
+        df["H_mH"] = float(file_name.split("_")[-4][1:])
+        df["C_uF"] = float(file_name.split("_")[-3][1:])
+    except (IndexError, ValueError):
+        raise ValueError(f"Could not extract R, L and C from file name: {file_name}")
+
+    # SIGNAL
+    t = df[time_col].to_numpy()
+    y = df[signal_col].to_numpy()
+    if len(y) == 0:
+        raise ValueError("Signal contains no data.")
+
     # TOLERANCE BAND
-    # -----------------------------
-    target = (1. + step_pu) * voltage_reference
-    band_percent = 0.02 * voltage_reference
-    tol = tol_factor * band_percent
+    target = (1.0 + step_pu) * voltage_reference
+    step_voltage = step_pu * voltage_reference
+    tol = tol_factor * step_voltage
     lower = target - tol
     upper = target + tol
 
-    # Boolean array for raw signal
-    within_band = (y >= lower) & (y <= upper)
+    y_smooth = smooth_signal(y, window_size=mean_window)
+    within_band = ((y_smooth >= lower) & (y_smooth <= upper))
 
-    # -----------------------------
+    # POST-STEP REGION
+    post_step_indices = np.where(t >= step_time)[0]
+
+    if len(post_step_indices) == 0:
+        raise ValueError(
+            f"No samples found after step time "
+            f"{step_time: .3f} s."
+        )
+
     # PEAK
-    # -----------------------------
-    peak_idx = np.argmax(y)
-    peak_value = y[peak_idx]
+    peak_idx_local = np.argmax(y_smooth[post_step_indices])
+    peak_idx = post_step_indices[peak_idx_local]
+    peak_value = y_smooth[peak_idx]
     peak_time = t[peak_idx]
 
-    # -----------------------------
-    # FIRST ENTRY
-    # -----------------------------
+    # Maximum deviation above target
+    Xm = peak_value - target
+
+    # FIRST ENTRY INTO BAND
     first_entry_idx = None
-    for i in range(len(y)):
+    for i in post_step_indices:
         if within_band[i]:
             first_entry_idx = i
             break
-    first_entry_time = t[first_entry_idx] if first_entry_idx is not None else None
 
-    # -----------------------------
-    # SETTLING TIME USING SMOOTH SIGNAL
-    # -----------------------------
-    y_smooth = smooth_signal(y, window_size=settling_window)
-    within_band_smooth = (y_smooth >= lower) & (y_smooth <= upper)
+    if first_entry_idx is not None:
+        first_entry_time = t[first_entry_idx]
+        Tcr = first_entry_time - step_time
+    else:
+        first_entry_time = None
+        Tcr = None
 
+    # SETTLING TIME
     settling_idx = None
-    for i in range(len(y_smooth)):
-        if within_band_smooth[i] and np.all(within_band_smooth[i:]):
+
+    for i in post_step_indices:
+        if within_band[i] and np.all(within_band[i:]):
             settling_idx = i
             break
 
-    settling_time = t[settling_idx] if settling_idx is not None else None
+    if settling_idx is not None:
+        settling_time = t[settling_idx]
+        Tcs = settling_time - step_time
+    else:
+        settling_time = None
+        Tcs = None
 
-    # -----------------------------
+    # STEADY-STATE VOLTAGE
+    Vdc_ss = df[signal_col].iloc[-50:].mean()
+
     # RETURN RESULTS
-    # -----------------------------
-    result_df = df.iloc[-1:].copy()
-    result_df["Tcr"] = round(first_entry_time - step_time, 3)
-    result_df["Tcs"] = round(settling_time - step_time, 3)
-    result_df["Xm"] = round(peak_value - target, 2)
-    result_df["Vdc_ss"] = round(df[signal_col][-10:].mean(), 2)
-    result_df = result_df.drop(columns=["TIME", "Vdc"])
+    result_df = df.iloc[[-1]].copy()
+    result_df["Tcr"] = (round(Tcr, 3) if Tcr is not None else np.nan)
+    result_df["Tcs"] = (round(Tcs, 3) if Tcs is not None else np.nan)
+    result_df["Xm"] = round(Xm, 2)
+    result_df["Vdc_ss"] = round(Vdc_ss, 2)
+    result_df = result_df.drop(columns=[time_col, signal_col], errors="ignore")
     result_df.reset_index(drop=True, inplace=True)
-
     return result_df
 
 
@@ -364,129 +406,140 @@ def plot_step_up_voltage_signal(
         step_pu=0.02,
         voltage_reference=640,
         tol_factor=0.05,
-        settling_window=100
+        mean_window=200
 ):
-    # -----------------------------
     # LOAD DATA
-    # -----------------------------
+    file_path = Path(file_path)
     df = pd.read_csv(file_path)
-    steady_state_point = df.index.get_loc(df.index[df['TIME'] >= (step_time - 0.5)][0])
-    df = df.iloc[steady_state_point:, :]
-    t = df[time_col].values
-    y = df[signal_col].values
+    start_points = df.index[df[time_col] >= (step_time - 0.5)]
+    if len(start_points) == 0:
+        raise ValueError(
+            f"No data found at or after "
+            f"{step_time - 0.5: .3f} s."
+        )
 
-    # -----------------------------
+    steady_state_point = df.index.get_loc(start_points[0])
+    df = df.iloc[steady_state_point:].copy()
+    t = df[time_col].to_numpy()
+    y = df[signal_col].to_numpy()
+    if len(y) == 0:
+        raise ValueError("The signal contains no data.")
+
     # TOLERANCE BAND
-    # -----------------------------
-    target = 1.02 * voltage_reference
-    band_percent = step_pu * voltage_reference
-    tol = tol_factor * band_percent
+    target = (1.0 + step_pu) * voltage_reference
+    step_voltage = step_pu * voltage_reference
+    tol = tol_factor * step_voltage
     lower = target - tol
     upper = target + tol
+    y_smooth = smooth_signal(y, window_size=mean_window)
+    within_band = ((y_smooth >= lower) & (y_smooth <= upper))
 
-    # -----------------------------
-    # SMOOTHING (for settling)
-    # -----------------------------
-    y_smooth = pd.Series(y).rolling(window=settling_window, center=True, min_periods=1).mean().values
-
-    within_band = (y >= lower) & (y <= upper)
-    within_band_smooth = (y_smooth >= lower) & (y_smooth <= upper)
-
-    # -----------------------------
-    # RISE TIME (first entry)
-    # -----------------------------
+    # Tcr
     rise_idx = None
-    for i in range(len(y)):
+    post_step_indices = np.where(t >= step_time)[0]
+    for i in post_step_indices:
         if within_band[i]:
             rise_idx = i
             break
 
-    rise_time = t[rise_idx] if rise_idx is not None else None
+    if rise_idx is not None:
+        rise_time = t[rise_idx]
+        Tcr = rise_time - step_time
+    else:
+        rise_time = None
+        Tcr = None
 
-    # -----------------------------
     # PEAK
-    # -----------------------------
-    peak_idx = np.argmax(y)
-    peak_value = y[peak_idx]
+    post_step_y = y_smooth[post_step_indices]
+    peak_idx_local = np.argmax(post_step_y)
+    peak_idx = post_step_indices[peak_idx_local]
+    peak_value = y_smooth[peak_idx]
     peak_time = t[peak_idx]
 
-    # -----------------------------
-    # SETTLING TIME (smoothed)
-    # -----------------------------
+    # Maximum deviation from target
+    Xm = peak_value - target
+
+    # SETTLING TIME
     settling_idx = None
-    for i in range(len(y_smooth)):
-        if within_band_smooth[i] and np.all(within_band_smooth[i:]):
+    for i in post_step_indices:
+        if within_band[i] and np.all(within_band[i:]):
             settling_idx = i
             break
 
-    settling_time = t[settling_idx] if settling_idx is not None else None
+    if settling_idx is not None:
+        settling_time = t[settling_idx]
+        Tcs = settling_time - step_time
+    else:
+        settling_time = None
+        Tcs = None
 
-    # -----------------------------
     # PLOTTING
-    # -----------------------------
-    plt.figure(figsize=(7, 4))
-    ax = plt.gca()
-
-    # Signal
-    plt.plot(t, y / voltage_reference, label="Udc", color="blue")
-
-    # Smoothed (optional for visualization)
-    plt.plot(t, y_smooth / voltage_reference, linestyle="--", label="Udc average")
-
-    # Target line
-    plt.axhline(target / voltage_reference, linestyle="--", color="red", label="Reference")
-
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(t, y / voltage_reference, label="Udc", color="blue")
+    ax.plot(t, y_smooth / voltage_reference, linestyle="--", label="Udc average")
+    # Target
+    ax.axhline(target / voltage_reference, linestyle="--", color="red", linewidth=1.5, label="Reference")
     # Tolerance band
-    plt.axhline(lower / voltage_reference, linestyle=":", color="brown", linewidth=1.5, label="Lower tolerance")
-    plt.axhline(upper / voltage_reference, linestyle="-", color="brown", linewidth=1.5, label="Upper tolerance")
+    ax.axhline(lower / voltage_reference, linestyle=":", color="brown", linewidth=1.5, label="Lower tolerance")
+    ax.axhline(upper / voltage_reference, linestyle="-", color="brown", linewidth=1.5, label="Upper tolerance")
 
-    # Rise time marker
-    if rise_time is not None:
-        plt.scatter(rise_time, y[rise_idx] / voltage_reference, color="indigo")
-        plt.annotate(
-            "Tcr",
-            (rise_time, y[rise_idx] / voltage_reference),
-            xytext=(rise_time - 0.01, y[rise_idx] / voltage_reference - 0.008),
+    # Tcr MARKER
+    if rise_idx is not None:
+        ax.scatter(rise_time, y_smooth[rise_idx] / voltage_reference, color="indigo")
+        ax.annotate(
+            f"Tcr = {Tcr:.3f} s",
+            (
+                rise_time,
+                y_smooth[rise_idx] / voltage_reference
+            ),
+            xytext=(rise_time - 0.01, y_smooth[rise_idx] / voltage_reference - 0.008),
             arrowprops=dict(arrowstyle="->")
         )
 
-    # Peak marker
-    plt.scatter(peak_time, peak_value / voltage_reference, color="green")
-    plt.annotate(
-        "Xm",
-        (peak_time, peak_value / voltage_reference),
+    # Xm MARKER
+    ax.scatter(peak_time, peak_value / voltage_reference, color="green")
+
+    ax.annotate(
+        f"Xm = {Xm:.2f} kV",
+        (
+            peak_time,
+            peak_value / voltage_reference
+        ),
         xytext=(peak_time + 0.005, peak_value / voltage_reference + 0.005),
         arrowprops=dict(arrowstyle="->")
     )
 
-    # Settling time marker
-    if settling_time is not None:
-        plt.scatter(settling_time, y[settling_idx] / voltage_reference, color="violet")
-        plt.annotate(
-            "Tcs",
-            (settling_time, y[settling_idx] / voltage_reference),
-            xytext=(settling_time + 0.01, y[settling_idx] / voltage_reference + 0.007),
+    # Tcs MARKER
+    if settling_idx is not None:
+        ax.scatter(settling_time, y_smooth[settling_idx] / voltage_reference, color="violet")
+        ax.annotate(
+            f"Tcs = {Tcs: .3f} s",
+            (
+                settling_time,
+                y_smooth[settling_idx] / voltage_reference
+            ),
+            xytext=(settling_time + 0.01, y_smooth[settling_idx] / voltage_reference + 0.007),
             arrowprops=dict(arrowstyle="->")
         )
 
-    # Labels
-    plt.xlabel("Time (s)")
-    plt.ylabel("Udc [p.u]")
-    plt.title("Voltage reference step response")
+    # LABELS / FORMAT
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Udc [p.u.]")
+    ax.set_title("Voltage reference step response")
+    ax.legend(loc=4)
+    ax.grid()
+    ax.yaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    ax.set_ylim([0.99, 1.03])
+    ax.set_xlim([step_time - 0.2, step_time + 0.5])
+    fig.tight_layout()
 
-    plt.legend(loc=4)
-    plt.grid()
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-    plt.ylim([0.99, 1.03])
-    plt.xlim([step_time - 0.2, step_time + 0.5])
-    plt.tight_layout()
-
-    fig_path = "\\".join(str(file_path).split("\\")[0:-2]) + "\\sim_figures"
-    fig_name = str(file_path).split("\\")[-1][0:-4]
-    file_path = Path(f"{fig_path}\\{fig_name}.pdf")
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(file_path)
-    plt.close()
+    # SAVE FIGURE
+    fig_path = file_path.parent.parent / "sim_figures"
+    fig_name = file_path.stem
+    output_path = fig_path / f"{fig_name}.pdf"
+    fig_path.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
 
 
 def analyse_step_down_voltage_signal(
@@ -496,76 +549,177 @@ def analyse_step_down_voltage_signal(
         signal_col="Vdc",
         step_pu=0.02,
         tol_factor=0.05,
-        voltage_reference=640.,
-        settling_window=200  # default window for smoothing
+        voltage_reference=640.0,
+        mean_window=200
 ):
     """
-    Analyze a step-down signal from a CSV file.
-    Settling time is calculated using a smoothed version of the signal.
+    Analyse a step-down voltage signal from a CSV file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the CSV file.
+    step_time : float
+        Time at which the voltage step is applied.
+    time_col : str
+        Name of the time column.
+    signal_col : str
+        Name of the voltage signal column.
+    step_pu : float
+        Magnitude of the voltage step in per-unit.
+    tol_factor : float
+        Fraction of the step magnitude used as the settling tolerance.
+    voltage_reference : float
+        Initial/reference DC voltage.
+    mean_window : int
+        Window size used for signal smoothing.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame containing R, L, C, Tcr, Tcs, Xm, Vdc_ss and Result.
     """
+
     # -----------------------------
     # LOAD DATA
     # -----------------------------
     df = pd.read_csv(file_path)
-    steady_state_point = df.index.get_loc(df.index[df[time_col] >= (step_time - 0.1)][0])
-    df = df.iloc[steady_state_point:, :]
-    df["R_ohms"] = float(str(file_path).split("\\")[-1].split("_")[-2][1:])
-    df["H_mH"] = float(str(file_path).split("\\")[-1].split("_")[-4][1:])
-    df["C_uF"] = float(str(file_path).split("\\")[-1].split("_")[-3][1:])
 
-    t = df[time_col].values
-    y = df[signal_col].values
+    # Find the first sample 0.1 s before the step
+    pre_step_time = step_time - 0.1
+    start_idx = df.index[df[time_col] >= pre_step_time]
+
+    if len(start_idx) == 0:
+        raise ValueError(
+            f"No data found at or after {pre_step_time:.3f} s."
+        )
+
+    start_position = df.index.get_loc(start_idx[0])
+    df = df.iloc[start_position:].copy()
+
+    # -----------------------------
+    # EXTRACT R, L AND C FROM FILE NAME
+    # -----------------------------
+    file_name = str(file_path).replace("\\", "/").split("/")[-1]
+
+    try:
+        parts = file_name.split("_")
+
+        df["R_ohms"] = float(parts[-2][1:])
+        df["H_mH"] = float(parts[-4][1:])
+        df["C_uF"] = float(parts[-3][1:])
+    except (IndexError, ValueError):
+        raise ValueError(f"Could not extract R, L and C from file name: {file_name}")
+
+    # -----------------------------
+    # SIGNAL DATA
+    # -----------------------------
+    t = df[time_col].to_numpy()
+    y = df[signal_col].to_numpy()
+
+    if len(y) == 0:
+        raise ValueError("The signal contains no data.")
+
+    y_smooth = smooth_signal(y, window_size=mean_window)
+
+    # -----------------------------
+    # TARGET VALUE
+    # -----------------------------
+    target = (1.0 - step_pu) * voltage_reference
+
+    # Step magnitude
+    step_magnitude = step_pu * voltage_reference
+
+    # Tolerance = tol_factor × step magnitude
+    tol = tol_factor * step_magnitude
+
+    lower = target - tol
+    upper = target + tol
 
     # -----------------------------
     # TOLERANCE BAND
     # -----------------------------
-    target = (1. - step_pu) * voltage_reference
-    band_percent = 0.02 * voltage_reference
-    tol = tol_factor * band_percent
-    lower = target - tol
-    upper = target + tol
-
-    within_band = (y >= lower) & (y <= upper)
+    within_band = ((y_smooth >= lower) & (y_smooth <= upper))
 
     # -----------------------------
-    # MIN VALUE
+    # MINIMUM VOLTAGE / OVERSHOOT
     # -----------------------------
-    min_idx = np.argmin(y)
-    min_value = y[min_idx]
+    min_idx = np.argmin(y_smooth)
+
+    min_value = y_smooth[min_idx]
     min_time = t[min_idx]
 
+    # Voltage deviation below target
+    Xm = target - min_value
+
     # -----------------------------
-    # TIME TO FALL INTO TOLERANCE BAND
+    # TIME TO ENTER TOLERANCE BAND
     # -----------------------------
     fall_idx = None
-    for i in range(len(y)):
+
+    for i in range(len(y_smooth)):
         if within_band[i]:
             fall_idx = i
             break
-    fall_time = t[fall_idx] if fall_idx is not None else None
+
+    if fall_idx is not None:
+        fall_time = t[fall_idx]
+        Tcr = fall_time - step_time
+    else:
+        Tcr = np.nan
 
     # -----------------------------
-    # SETTLING TIME USING SMOOTH SIGNAL
+    # SETTLING TIME
     # -----------------------------
-    y_smooth = smooth_signal(y, window_size=settling_window)
-    within_band_smooth = (y_smooth >= lower) & (y_smooth <= upper)
-
     settling_idx = None
+
     for i in range(len(y_smooth)):
-        if within_band_smooth[i] and np.all(within_band_smooth[i:]):
+        if within_band[i] and np.all(within_band[i:]):
             settling_idx = i
             break
-    settling_time = t[settling_idx] if settling_idx is not None else None
+
+    if settling_idx is not None:
+        settling_time = t[settling_idx]
+        Tcs = settling_time - step_time
+    else:
+        Tcs = np.nan
 
     # -----------------------------
-    # RETURN RESULTS
+    # STEADY-STATE VOLTAGE
     # -----------------------------
-    result_df = df.iloc[-1:].copy()
-    result_df["Tcr"] = round(fall_time - step_time, 3)
-    result_df["Tcs"] = round(settling_time - step_time, 3)
-    result_df["Xm"] = round(target - min_value, 2)
-    result_df["Vdc_ss"] = round(df[signal_col][-10:].mean(), 2)
-    result_df = result_df.drop(columns=["TIME", "Vdc"])
+    Vdc_ss = df[signal_col].iloc[-50:].mean()
+
+    # -----------------------------
+    # RESULT
+    # -----------------------------
+    Xm_limit = 0.004 * voltage_reference
+    passed = (
+            pd.notna(Tcr) and
+            pd.notna(Tcs) and
+            Tcr <= 0.2 and  # Tcr <= 0.2 s
+            Tcs <= 0.3 and  # Tcs <= 0.3 s
+            Xm <= Xm_limit
+    )
+
+    # -----------------------------
+    # CREATE RESULT DATAFRAME
+    # -----------------------------
+    result_df = df.iloc[[-1]].copy()
+
+    result_df["Tcr"] = round(Tcr, 3) if pd.notna(Tcr) else np.nan
+    result_df["Tcs"] = round(Tcs, 3) if pd.notna(Tcs) else np.nan
+    result_df["Xm"] = round(Xm, 2)
+    result_df["Vdc_ss"] = round(Vdc_ss, 2)
+
+    result_df["Result"] = "Pass" if passed else "Fail"
+
+    # Remove signal/time columns
+    result_df.drop(
+        columns=[time_col, signal_col],
+        inplace=True,
+        errors="ignore"
+    )
+
     result_df.reset_index(drop=True, inplace=True)
 
     return result_df
@@ -579,109 +733,140 @@ def plot_step_down_voltage_signal(
         step_pu=0.02,
         voltage_reference=640,
         tol_factor=0.05,
-        settling_window=200
+        mean_window=200
 ):
-    # -----------------------------
     # LOAD DATA
-    # -----------------------------
+    file_path = Path(file_path)
     df = pd.read_csv(file_path)
-    steady_state_point = df.index.get_loc(df.index[df[time_col] >= (step_time - 0.5)][0])
-    df = df.iloc[steady_state_point:, :]
-    t = df[time_col].values
-    y = df[signal_col].values
+    start_points = df.index[df[time_col] >= (step_time - 0.5)]
 
-    # -----------------------------
+    if len(start_points) == 0:
+        raise ValueError(
+            f"No data found at or after "
+            f"{step_time - 0.5:.3f} s."
+        )
+
+    steady_state_point = df.index.get_loc(start_points[0])
+    df = df.iloc[steady_state_point:].copy()
+    t = df[time_col].to_numpy()
+    y = df[signal_col].to_numpy()
+
+    if len(y) == 0:
+        raise ValueError("The signal contains no data.")
+
     # TOLERANCE BAND
-    # -----------------------------
-    target = (1. - step_pu) * voltage_reference
-    band_percent = step_pu * voltage_reference
-    tol = tol_factor * band_percent
+    target = (1.0 - step_pu) * voltage_reference
+    step_voltage = step_pu * voltage_reference
+    tol = tol_factor * step_voltage
     lower = target - tol
     upper = target + tol
 
-    # -----------------------------
-    # SMOOTH SIGNAL FOR SETTLING
-    # -----------------------------
-    y_smooth = smooth_signal(y, window_size=settling_window)
-    within_band = (y >= lower) & (y <= upper)
-    within_band_smooth = (y_smooth >= lower) & (y_smooth <= upper)
+    y_smooth = smooth_signal(y, window_size=mean_window)
+    within_band = (
+            (y_smooth >= lower) &
+            (y_smooth <= upper)
+    )
 
-    # -----------------------------
     # TIME TO FALL INTO BAND
-    # -----------------------------
     fall_idx = None
-    for i in range(len(y)):
+
+    for i in range(len(y_smooth)):
         if within_band[i]:
             fall_idx = i
             break
-    fall_time = t[fall_idx] if fall_idx is not None else None
 
-    # -----------------------------
-    # MIN VALUE
-    # -----------------------------
-    min_idx = np.argmin(y)
-    min_value = y[min_idx]
+    if fall_idx is not None:
+        fall_time = t[fall_idx]
+        Tcr = fall_time - step_time
+    else:
+        fall_time = None
+        Tcr = None
+
+    # MINIMUM VALUE
+    min_idx = np.argmin(y_smooth)
+    min_value = y_smooth[min_idx]
     min_time = t[min_idx]
+    Xm = target - min_value
 
-    # -----------------------------
     # SETTLING TIME
-    # -----------------------------
     settling_idx = None
+
     for i in range(len(y_smooth)):
-        if within_band_smooth[i] and np.all(within_band_smooth[i:]):
+        if within_band[i] and np.all(within_band[i:]):
             settling_idx = i
             break
-    settling_time = t[settling_idx] if settling_idx is not None else None
 
-    # -----------------------------
+    if settling_idx is not None:
+        settling_time = t[settling_idx]
+        Tcs = settling_time - step_time
+    else:
+        settling_time = None
+        Tcs = None
+
     # PLOTTING
-    # -----------------------------
-    plt.figure(figsize=(7, 4))
-    ax = plt.gca()
-    plt.plot(t, y / voltage_reference, color="blue", label="Udc")
-    plt.plot(t, y_smooth / voltage_reference, linestyle="--", label="Udc average")
-    plt.axhline(target / voltage_reference, linestyle="--", color="red", linewidth=1.5, label="Reference")
-    plt.axhline(lower / voltage_reference, linestyle=":", color="brown", linewidth=1.5, label="Lower tolerance")
-    plt.axhline(upper / voltage_reference, linestyle="-", color="brown", linewidth=1.5, label="Upper tolerance")
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(t, y / voltage_reference, color="blue", label="Udc")
+    ax.plot(t, y_smooth / voltage_reference, linestyle="--", label="Udc average")
+    ax.axhline(target / voltage_reference, linestyle="--", color="red", linewidth=1.5, label="Reference")
+    ax.axhline(lower / voltage_reference, linestyle=":", color="brown", linewidth=1.5, label="Lower tolerance")
+    ax.axhline(upper / voltage_reference, linestyle="-", color="brown", linewidth=1.5, label="Upper tolerance")
 
-    if fall_time is not None:
-        plt.scatter(fall_time, y[fall_idx] / voltage_reference)
-        plt.annotate(
-            "Tcr",
-            (fall_time, y[fall_idx] / voltage_reference),
-            xytext=(fall_time - 0.09, y[fall_idx] / voltage_reference + 0.008),
+    # Tcr
+    if fall_idx is not None:
+        ax.scatter(fall_time, y_smooth[fall_idx] / voltage_reference)
+        ax.annotate(
+            f"Tcr = {Tcr: .3f} s",
+            (
+                fall_time,
+                y_smooth[fall_idx] / voltage_reference
+            ),
+            xytext=(
+                fall_time - 0.09,
+                y_smooth[fall_idx] / voltage_reference + 0.008
+            ),
             arrowprops=dict(arrowstyle="->")
         )
 
-    plt.scatter(min_time, min_value / voltage_reference)
-    plt.annotate(
-        "Xm",
-        (min_time, min_value / voltage_reference),
-        xytext=(min_time + 0.005, min_value / voltage_reference + 0.006),
+    # Xm
+    ax.scatter(min_time, min_value / voltage_reference)
+    ax.annotate(
+        f"Xm = {Xm: .2f} kV", (min_time, min_value / voltage_reference),
+        xytext=(
+            min_time + 0.005,
+            min_value / voltage_reference + 0.006
+        ),
         arrowprops=dict(arrowstyle="->")
     )
 
-    if settling_time is not None:
-        plt.scatter(settling_time, y[settling_idx] / voltage_reference)
-        plt.annotate(
-            "Tcs",
-            (settling_time, y[settling_idx] / voltage_reference),
-            xytext=(settling_time + 0.01, y[settling_idx] / voltage_reference + 0.007),
+    # Tcs
+    if settling_idx is not None:
+        ax.scatter(
+            settling_time,
+            y_smooth[settling_idx] / voltage_reference
+        )
+        ax.annotate(
+            f"Tcs = {Tcs:.3f} s", (settling_time, y_smooth[settling_idx] / voltage_reference),
+            xytext=(
+                settling_time + 0.01,
+                y_smooth[settling_idx] / voltage_reference + 0.007
+            ),
             arrowprops=dict(arrowstyle="->")
         )
 
-    plt.xlabel("Time (s)")
-    plt.ylabel("Udc [p.u]")
-    plt.title("Voltage reference step response")
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-    plt.legend(loc=1)
-    plt.ylim([0.97, 1.005])
-    plt.xlim([step_time - 0.2, step_time + 0.5])
-    plt.grid()
+    # FORMAT PLOT
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Udc [p.u.]")
+    ax.set_title("Voltage reference step response")
+    ax.yaxis.set_major_formatter(FormatStrFormatter("%.3f"))
+    ax.legend(loc=1)
+    ax.set_ylim([0.97, 1.005])
+    ax.set_xlim([step_time - 0.2, step_time + 0.5])
+    ax.grid()
 
-    fig_path = "\\".join(str(file_path).split("\\")[0:-2]) + "\\sim_figures"
-    fig_name = str(file_path).split("\\")[-1][0:-4]
-    file_path = Path(f"{fig_path}\\{fig_name}.pdf")
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(file_path)
+    # SAVE FIGURE
+    fig_path = file_path.parent.parent / "sim_figures"
+    fig_name = file_path.stem
+    output_path = fig_path / f"{fig_name}.pdf"
+    fig_path.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_path, bbox_inches="tight")
     plt.close()
