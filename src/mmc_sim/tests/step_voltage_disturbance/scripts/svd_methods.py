@@ -1,4 +1,6 @@
 import math
+
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing import Dict, List
@@ -249,7 +251,12 @@ def parameter_sweep_run(rl_params: Dict[str, List[float]], plot_results: bool = 
     return
 
 
-def analyse_step_response(res_file: str, pref: float, signal_name: str = "Pac", step_time: float = 3.):
+def analyse_step_response(
+        res_file: str,
+        pref: float,
+        signal_name: str = "Pac",
+        step_time: float = 3.0
+):
     """
     Analyse the active power step response.
 
@@ -259,10 +266,10 @@ def analyse_step_response(res_file: str, pref: float, signal_name: str = "Pac", 
         Path to the PSCAD result file.
     pref : float
         Final active power reference (MW).
-    signal_name: str
-        name of the ac power column in result dataframe
-    step_time: float
-        time for the application of a power step
+    signal_name : str
+        Name of the AC power column in the result DataFrame.
+    step_time : float
+        Time at which the power step is applied.
 
     Returns
     -------
@@ -272,30 +279,102 @@ def analyse_step_response(res_file: str, pref: float, signal_name: str = "Pac", 
         Full simulation results.
     """
 
+    # LOAD DATA
     p_df = pd.read_csv(res_file)
 
+    # CHECK REQUIRED COLUMNS
+    if "TIME" not in p_df.columns:
+        raise ValueError(
+            "The result file does not contain a 'TIME' column."
+        )
+
+    if signal_name not in p_df.columns:
+        raise ValueError(
+            f"The result file does not contain the "
+            f"'{signal_name}' column."
+        )
+
+    # EXTRACT PARAMETERS FROM FILE NAME
     filename = Path(res_file).stem
 
-    R = float(filename.split("_")[-2][1:])
-    H = float(filename.split("_")[-3][1:])
+    try:
+        R = float(filename.split("_")[-2][1:])
+        L = float(filename.split("_")[-3][1:])
+    except (IndexError, ValueError):
+        raise ValueError(
+            f"Could not extract R and L from file name: "
+            f"{filename}"
+        )
 
-    pac_col = p_df.loc[:, signal_name]
-    steady_state_point = p_df.index.get_loc(p_df.index[p_df["TIME"] >= (step_time - 0.3)][0])
+    # SIGNAL
+    pac_col = p_df[signal_name]
+
+    start_points = p_df.index[
+        p_df["TIME"] >= (step_time - 0.3)
+    ]
+
+    if len(start_points) == 0:
+        raise ValueError(
+            f"No data found at or after "
+            f"{step_time - 0.3:.3f} s."
+        )
+
+    steady_state_point = p_df.index.get_loc(
+        start_points[0]
+    )
+
     search_region = pac_col.iloc[steady_state_point:]
 
-    p50_index = search_region[search_region >= 0.5 * abs(pref)].index[0]
-    p90_index = search_region[search_region >= 0.9 * abs(pref)].index[0]
+    # 50% AND 90% RESPONSE LEVELS
+    pac = -pref
+    if pac > 0:
+        p50_candidates = search_region[
+            search_region >= 0.5 * pac
+        ]
 
-    t50 = round(p_df.loc[p50_index, "TIME"], 3)
-    t90 = round(p_df.loc[p90_index, "TIME"], 3)
+        p90_candidates = search_region[
+            search_region >= 0.9 * pac
+        ]
+    else:
+        p50_candidates = search_region[
+            search_region <= 0.5 * pac
+        ]
+        p90_candidates = search_region[
+            search_region <= 0.9 * pac
+        ]
 
+    # T50
+    if not p50_candidates.empty:
+        p50_index = p50_candidates.index[0]
+        t50 = round(p_df.loc[p50_index, "TIME"] - step_time, 3)
+    else:
+        t50 = np.nan
+
+    # T90
+    if not p90_candidates.empty:
+        p90_index = p90_candidates.index[0]
+        t90 = round(p_df.loc[p90_index, "TIME"] - step_time, 3)
+    else:
+        t90 = np.nan
+
+    # PASS / FAIL
+    result = "Fail"
+    if (
+        pd.notna(t50)
+        and pd.notna(t90)
+        and t50 <= 0.05
+        and t90 <= 0.3
+    ):
+        result = "Pass"
+
+    # SUMMARY
     summary_df = pd.DataFrame({
-        "H_mH": [H],
+        "L_mH": [L],
         "R_ohms": [R],
         "t50_s": [t50],
         "t90_s": [t90],
+        "Result": [result]
     })
-
     return summary_df, p_df
 
 
@@ -331,8 +410,8 @@ def plot_step_response(
     signal = p_df[signal_col]
 
     # Response times
-    t50 = summary_df.loc[0, "t50_s"]
-    t90 = summary_df.loc[0, "t90_s"]
+    t50 = summary_df.loc[0, "t50_s"] + step_time
+    t90 = summary_df.loc[0, "t90_s"] + step_time
 
     # Plot window
     mask = (time >= step_time - 0.5) & (time <= step_time + 0.5)
@@ -357,13 +436,9 @@ def plot_step_response(
 
     ax.set_xlim(step_time - 0.2, step_time + 0.5)
     ax.set_ylim(-2, abs(signal.loc[mask]).max() * 1.1)
-
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Pac (MW)")
-
     ax.grid(True, linestyle="--")
     ax.legend(loc="lower right")
-
     fig.tight_layout()
-
     return fig

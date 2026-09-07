@@ -21,7 +21,7 @@ def run_analysis(config_file):
     X = dataset[["L", "C", "R", "SCR", "XR"]].values
 
     # Output response
-    Y = dataset["Tcr"].values  # "Tcr", "Tcs", "Xm"  Each parameter is evaluated separately.
+    Y = dataset["Xm"].values  # "Tcr", "Tcs", "Xm"  Each parameter is evaluated separately.
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=13)
     distribution = create_distribution()
     model = train_pce(X_train, Y_train, order=3, distribution=distribution)

@@ -3,14 +3,14 @@ step_power_ref:
   name: MMC_step_power_reference
   mva: 1200
   fn: 50
-  initial_power: -1000
-  final_power: -880
+  initial_power: -880
+  final_power: -1000
   ramp_rate: 500
   SCR: 10
   XR: 10
   ac_voltage: 400.
-  step_time: 3.
-  time_duration: 5
+  step_time: 2.5
+  time_duration: 3.5
   sample_step: 100
   time_step: 10
   components:
@@ -20,4 +20,4 @@ step_power_ref:
   results:
     file_name: step_p_ref_response
     result_file: ../pscad_model/MMC_step_power_reference.gf46
-    save_path: ../output/simulation_results/step_down_power_ref_response
+    save_path: ../output/simulation_results/step_up_power_ref_response

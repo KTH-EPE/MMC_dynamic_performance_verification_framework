@@ -1,7 +1,7 @@
 <project name="MMC_step_voltage_disturbance" version="5.0.2" schema="" Target="EMTDC">
   <paramlist name="Settings">
     <param name="creator" value="geraldck,1768206855" />
-    <param name="time_duration" value="5" />
+    <param name="time_duration" value="3.5" />
     <param name="time_step" value="10" />
     <param name="sample_step" value="100" />
     <param name="chatter_threshold" value=".001" />
@@ -24,7 +24,7 @@
     <param name="Check" value="0" />
     <param name="Debug" value="0" />
     <param name="description" value="" />
-    <param name="revisor" value="geraldck, 1784279085" />
+    <param name="revisor" value="geraldck, 1788795260" />
   </paramlist>
   <Layers />
   <List classid="Settings">
@@ -34,7 +34,7 @@
       </path>
       <paramlist>
         <param name="xmin" value="0.0" />
-        <param name="xmax" value="5.0" />
+        <param name="xmax" value="3.5" />
       </paramlist>
     </Settings>
     <Settings classid="OverlayGraphSettings" id="1332471841" link="101394035">
@@ -43,7 +43,7 @@
       </path>
       <paramlist>
         <param name="ymin" value="-1.5" />
-        <param name="ymax" value="1.5" />
+        <param name="ymax" value="2.0" />
       </paramlist>
     </Settings>
     <Settings classid="GraphFrameSettings" id="1303234756" link="550367929">
@@ -8314,7 +8314,7 @@
       </path>
       <paramlist>
         <param name="xmin" value="0.0" />
-        <param name="xmax" value="5.0" />
+        <param name="xmax" value="3.5" />
       </paramlist>
     </Settings>
     <Settings classid="OverlayGraphSettings" id="488923524" link="906708191">
@@ -8322,8 +8322,8 @@
         <ref link="866498961" />
       </path>
       <paramlist>
-        <param name="ymin" value="-1400.0" />
-        <param name="ymax" value="400.0" />
+        <param name="ymin" value="-700.0" />
+        <param name="ymax" value="300.0" />
       </paramlist>
     </Settings>
     <Settings classid="TraceSettings" id="59991288" link="1774015090">
@@ -10858,7 +10858,7 @@
         </Wire>
       </schematic>
     </Definition>
-    <Definition classid="UserCmpDefn" name="Main" id="1468968198" group="" url="" version="" build="" crc="73467046" view="false" date="1784196265">
+    <Definition classid="UserCmpDefn" name="Main" id="1468968198" group="" url="" version="" build="" crc="98178067" view="false" date="1788793529">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -10988,7 +10988,7 @@
               <param name="ymin" value="-2.0" />
               <param name="ymax" value="2.0" />
             </paramlist>
-            <Curve classid="Curve" id="1774015090" name="Idc" link="887450504" color="0" bold="0" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
+            <Curve classid="Curve" id="1774015090" name="Idc" link="887450504" color="0" bold="1" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
               <path />
             </Curve>
           </Graph>
@@ -11030,7 +11030,7 @@
             <param name="INTR" value="0" />
             <param name="Dim" value="1" />
             <param name="conv" value="1" />
-            <param name="Name" value="" />
+            <param name="Name" value="step_obj1" />
           </paramlist>
         </User>
         <User classid="UserCmp" defn="master:const" id="2066770222" x="558" y="108" w="76" h="35" z="30" orient="0" link="-1" q="4" disable="false">
@@ -11109,7 +11109,7 @@
               <param name="ymin" value="-2.0" />
               <param name="ymax" value="2.0" />
             </paramlist>
-            <Curve classid="Curve" id="1936286059" name="Pac" link="1277339489" color="0" bold="0" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
+            <Curve classid="Curve" id="1936286059" name="Pac" link="1277339489" color="0" bold="1" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
               <path />
             </Curve>
           </Graph>
@@ -11170,7 +11170,7 @@
         </User>
         <User classid="UserCmp" defn="master:resistor" id="1883069841" x="558" y="234" w="44" h="33" z="1" orient="0" link="-1" q="4" disable="false" name="" layer="">
           <paramlist link="-1" name="" crc="10119665">
-            <param name="R" value="6" />
+            <param name="R" value="7" />
             <param name="Name" value="R_dc" />
           </paramlist>
         </User>
@@ -11180,7 +11180,7 @@
         </Wire>
         <User classid="UserCmp" name="master:inductor" id="1788236701" x="486" y="234" w="44" h="31" z="1" orient="6" defn="master:inductor" link="-1" q="4" disable="false" layer="">
           <paramlist link="-1" name="" crc="666653">
-            <param name="L" value="0.6" />
+            <param name="L" value="0.4" />
             <param name="Name" value="L_dc" />
           </paramlist>
         </User>
@@ -11233,7 +11233,7 @@
             <param name="INTR" value="0" />
             <param name="Dim" value="1" />
             <param name="conv" value="1" />
-            <param name="Name" value="" />
+            <param name="Name" value="step_obj2" />
           </paramlist>
         </User>
         <User classid="UserCmp" defn="master:const" id="749412575" x="864" y="108" w="76" h="35" z="40" orient="0" link="-1" q="4" disable="false">
@@ -13521,7 +13521,7 @@ Output]]></segment>
         </Gfx>
       </graphics>
     </Definition>
-    <Definition classid="UserCmpDefn" name="MMC_1_1_1" build="" crc="54321902" view="false" instances="0" date="1784196077" id="1521251991" w="320" h="400">
+    <Definition classid="UserCmpDefn" name="MMC_1_1_1" build="" crc="30635071" view="false" instances="0" date="1784298045" id="1521251991" w="320" h="400">
       <paramlist>
         <param name="Description" value="" />
       </paramlist>
@@ -14041,7 +14041,7 @@ Output]]></segment>
           <vertex x="0" y="0" />
           <vertex x="0" y="54" />
         </Wire>
-        <User classid="UserCmp" defn="master:source_1" id="518172244" x="486" y="540" w="55" h="80" z="190" orient="1" link="-1" layer="" q="4" disable="false">
+        <User classid="UserCmp" defn="master:source_1" id="518172244" x="486" y="540" w="55" h="80" z="180" orient="1" link="-1" layer="" q="4" disable="false">
           <paramlist link="-1" name="" crc="49505675">
             <param name="Name" value="Source1" />
             <param name="Type" value="1" />
@@ -14085,7 +14085,7 @@ Output]]></segment>
             <param name="showani" value="0" />
           </paramlist>
         </User>
-        <User classid="UserCmp" id="1058063295" name="master:export" x="180" y="504" w="61" h="24" z="200" orient="0" defn="master:export" link="-1" q="4" disable="false">
+        <User classid="UserCmp" id="1058063295" name="master:export" x="180" y="504" w="61" h="24" z="190" orient="0" defn="master:export" link="-1" q="4" disable="false">
           <paramlist name="" link="-1" crc="68967217">
             <param name="Name" value="Vcl" />
           </paramlist>
@@ -16918,7 +16918,7 @@ Output]]></segment>
         </User>
       </schematic>
     </Definition>
-    <Definition classid="UserCmpDefn" name="PI_1" build="" crc="36319227" view="false" instances="0" date="1784196075" id="393084548" w="320" h="400">
+    <Definition classid="UserCmpDefn" name="PI_1" build="" crc="36319227" view="false" instances="0" date="1784298042" id="393084548" w="320" h="400">
       <paramlist>
         <param name="Description" value="" />
       </paramlist>
@@ -17345,7 +17345,7 @@ Output]]></segment>
         </User>
       </schematic>
     </Definition>
-    <Definition classid="UserCmpDefn" name="DC_Voltage_Controller_32_1" group="" url="" version="" build="" crc="79370473" instances="0" key="" view="false" date="1784196074" id="140810049">
+    <Definition classid="UserCmpDefn" name="DC_Voltage_Controller_32_1" group="" url="" version="" build="" crc="79370473" instances="0" key="" view="false" date="1784298042" id="140810049">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -18743,7 +18743,7 @@ Output]]></segment>
         </Gfx>
       </graphics>
     </Definition>
-    <Definition classid="UserCmpDefn" name="I_50_1" group="" url="" version="" build="" crc="6550923" instances="0" key="" view="false" date="1784196075" id="1669961808">
+    <Definition classid="UserCmpDefn" name="I_50_1" group="" url="" version="" build="" crc="6550923" instances="0" key="" view="false" date="1784298042" id="1669961808">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -21241,7 +21241,7 @@ Output]]></segment>
         </Gfx>
       </graphics>
     </Definition>
-    <Definition classid="UserCmpDefn" name="NSCC_22_2" group="" url="" version="" build="" crc="9276324" instances="0" key="" view="false" date="1784196075" id="1581892240">
+    <Definition classid="UserCmpDefn" name="NSCC_22_2" group="" url="" version="" build="" crc="9276324" instances="0" key="" view="false" date="1784298043" id="1581892240">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -23297,7 +23297,7 @@ Output]]></segment>
         </Gfx>
       </graphics>
     </Definition>
-    <Definition classid="UserCmpDefn" name="ICC_30_1" group="" url="" version="" build="" crc="32326944" instances="0" key="" view="false" date="1784196076" id="234500398">
+    <Definition classid="UserCmpDefn" name="ICC_30_1" group="" url="" version="" build="" crc="32326944" instances="0" key="" view="false" date="1784298044" id="234500398">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -37013,7 +37013,7 @@ Output]]></segment>
   <List classid="Resource">
   </List>
   <hierarchy>
-    <call link="1505372599" name="MMC_step_voltage_disturbance:DS" z="-1" view="false" instance="0">
+    <call link="140920929" name="MMC_step_voltage_disturbance:DS" z="-1" view="false" instance="0">
       <call link="866498961" name="MMC_step_voltage_disturbance:Main" z="-1" view="true" instance="0">
         <call link="1350091687" name="MMC_step_voltage_disturbance:CONVERTER253" z="100" view="false" instance="0" />
         <call link="264348107" name="MMC_step_voltage_disturbance:CONVERTER102_1" z="170" view="false" instance="0">

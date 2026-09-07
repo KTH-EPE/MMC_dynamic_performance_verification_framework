@@ -1,4 +1,7 @@
 import math
+
+import pandas as pd
+
 from src.mmc_sim.core.config import Config
 from src.mmc_sim.core.pscad import PSCADModel
 from src.mmc_sim.core.config_components import ConfigDCGridComponents
@@ -7,9 +10,7 @@ from src.mmc_sim.core.parameter_sweep import ParameterSweep
 from src.mmc_sim.core.misc import *
 from src.mmc_sim.core.logger import setup_logger
 
-
 CONFIG_FILE = Path("config.yaml")
-
 
 logger = setup_logger(
     "simulation"
@@ -33,7 +34,7 @@ def apply_scr_and_xr(scr: float, xr: float, ac_voltage: float = 400.,
 
 
 def configure_ac_grid(project, component_id: str, scr: float, xr: float, mva: float, fn: float, u_ac: float):
-    lg, rg = apply_scr_and_xr(scr=scr, xr=xr, ac_voltage=u_ac,  sn=mva, fn=fn)
+    lg, rg = apply_scr_and_xr(scr=scr, xr=xr, ac_voltage=u_ac, sn=mva, fn=fn)
 
     grid = project.component(component_id)
     grid.parameters(Rg=rg, Lg=lg)
@@ -108,6 +109,7 @@ def load_configuration(config_file):
         "scr": cfg.get(sim_cfg, "SCR"),
         "xr": cfg.get(sim_cfg, "XR"),
         "ac_voltage": cfg.get(sim_cfg, "ac_voltage"),
+        "uref": cfg.get(sim_cfg, "DC_reference_voltage"),
         "mmc_id": cfg.get(sim_cfg, "components", "mmc_id"),
         "ac_grid_id": cfg.get(sim_cfg, "components", "ac_grid_id"),
     }
@@ -157,7 +159,12 @@ def single_run(rlc_params: dict):
     simulation = Simulation(model)
     result_df = simulation.run(cfg["result_file"])
     new_file_name = format_rlc_filename(**rlc_params, file_name=cfg["output_file"])
-    move_result_file(result_df, cfg["save_path"], new_file_name)
+    move_result_file(result_df, cfg["save_path"] / "sim_timeseries", new_file_name)
+    result_summary = summarise_results(cfg["save_path"] / "sim_timeseries" / new_file_name,
+                                       step_time=cfg["step_time"], voltage_reference=cfg["uref"])
+    file_path = cfg["save_path"] / "sim_summary" / new_file_name
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    result_summary.to_csv(file_path, index=False)
     return
 
 
@@ -211,5 +218,87 @@ def parameter_sweep_run(rlc_params: dict):
         logger.info(f"Running simulation for {params}")
         result_df = simulation.run(cfg["result_file"])
         new_file_name = format_rlc_filename(**params, file_name=cfg["output_file"])
-        move_result_file(result_df, cfg["save_path"], new_file_name)
+        move_result_file(result_df, cfg["save_path"] / "sim_timeseries", new_file_name)
+        result_summary = summarise_results(cfg["save_path"] / "sim_timeseries" / new_file_name,
+                                           step_time=cfg["step_time"], voltage_reference=cfg["uref"])
+        file_path = cfg["save_path"] / "sim_summary" / new_file_name
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        result_summary.to_csv(file_path, index=False)
     return
+
+
+def summarise_results(
+        res_file: str,
+        step_time: float,
+        voltage_reference: float,
+) -> pd.DataFrame:
+    """
+    Evaluate the maximum steady-state DC-voltage deviation following a step.
+
+    Parameters
+    ----------
+    res_file : str
+        Path to the PSCAD result file.
+    step_time : float
+        Time at which the step is applied (s).
+    voltage_reference : float
+        DC-voltage reference (V).
+
+    Returns
+    -------
+    pandas.DataFrame
+        One-row DataFrame containing the extracted parameters,
+        voltage deviation, and pass/fail result.
+    """
+
+    df = pd.read_csv(res_file)
+
+    # Check required columns
+    required_columns = {"TIME", "Vdc"}
+    missing_columns = required_columns - set(df.columns)
+
+    if missing_columns:
+        raise ValueError(
+            f"Missing required columns: {', '.join(sorted(missing_columns))}"
+        )
+
+    # Extract L, C, and R from the filename
+    filename = Path(res_file).stem
+    parts = filename.split("_")
+
+    try:
+        L = float(parts[-4][1:])
+        C = float(parts[-3][1:])
+        R = float(parts[-2][1:])
+    except (IndexError, ValueError):
+        raise ValueError(
+            f"Could not extract L, C, and R from file name: {filename}"
+        )
+
+    # Start the steady-state evaluation 0.1 s before the step
+    steady_state_points = df.index[
+        df["TIME"] >= (step_time - 0.1)
+        ]
+
+    if len(steady_state_points) == 0:
+        raise ValueError(
+            f"No data found at or after {step_time - 0.1: .3f} s."
+        )
+
+    steady_state_idx = df.index.get_loc(steady_state_points[0])
+
+    # Calculate maximum deviation from the DC-voltage reference
+    vdc_pu = abs(df["Vdc"].iloc[steady_state_idx:]) / voltage_reference
+    vdc_max = abs(vdc_pu.max() - 1.0)
+
+    # Pass/fail criterion: maximum deviation <= 5%
+    result = "Pass" if vdc_max <= 0.05 else "Fail"
+
+    return pd.DataFrame({
+        "L_mH": [L],
+        "C_uF": [C],
+        "R_ohms": [R],
+        "Xm_pu": [round(vdc_max, 4)],
+        "Vdc_ref_kV": [voltage_reference],
+        "Result": [result]
+    })

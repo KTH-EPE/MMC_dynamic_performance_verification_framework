@@ -273,81 +273,278 @@ def analyse_step_up_voltage_signal_for_sa(
         signal_col="Vdc",
         step_pu=0.02,
         tol_factor=0.05,
-        voltage_reference=640.,
-        settling_window=200  # default window for smoothing
+        voltage_reference=640.0,
+        mean_window=100
 ):
     """
-    Analyze a signal from a CSV file.
-    Settling time is calculated using a smoothed version of the signal.
-    The settling time is calculated with a smaller tolerance than specified in InterOPERA to improve accuracy of
-    sensitivity analysis for control settling time,
+    Analyse a step-up voltage signal from a CSV file.
+
+    Tcr:
+        Time from the voltage step until the signal first
+        enters the tolerance band.
+
+    Tcs:
+        Time from the voltage step until the signal enters
+        the tolerance band and remains there for the rest
+        of the simulation.
+
+    Xm:
+        Maximum voltage deviation above the target voltage.
     """
-    # -----------------------------
+
     # LOAD DATA
-    # -----------------------------
     df = pd.read_csv(file_path)
-    steady_state_point = df.index.get_loc(df.index[df['TIME'] >= (step_time - 0.1)][0])
-    df = df.iloc[steady_state_point:, :]
-    df["R_ohms"] = float(str(file_path).split("\\")[-1].split("_")[-2][1:])  # Creating a column for the resistance.
-    df["H_mH"] = float(str(file_path).split("\\")[-1].split("_")[-4][1:])
-    df["C_uF"] = float(str(file_path).split("\\")[-1].split("_")[-3][1:])
-    t = df[time_col].values
-    y = df[signal_col].values
+    start_points = df.index[df[time_col] >= step_time]
 
-    # -----------------------------
+    if len(start_points) == 0:
+        raise ValueError(
+            f"No data found at or after "
+            f"{step_time - 0.1: .3f} s."
+        )
+
+    steady_state_point = df.index.get_loc(start_points[0])
+    df = df.iloc[steady_state_point:, :].copy()
+
+    # EXTRACT PARAMETERS FROM FILE NAME
+    file_name = str(file_path).split("\\")[-1]
+    try:
+        df["R_ohms"] = float(file_name.split("_")[-2][1:])
+        df["H_mH"] = float(file_name.split("_")[-4][1:])
+        df["C_uF"] = float(file_name.split("_")[-3][1:])
+    except (IndexError, ValueError):
+        raise ValueError(f"Could not extract R, L and C from file name: {file_name}")
+
+    # SIGNAL
+    t = df[time_col].to_numpy()
+    y = df[signal_col].to_numpy()
+    if len(y) == 0:
+        raise ValueError("Signal contains no data.")
+
     # TOLERANCE BAND
-    # -----------------------------
-    target = (1. + step_pu) * voltage_reference
-    band_percent = 0.02 * voltage_reference
-    tol = tol_factor * band_percent
+    target = (1.0 + step_pu) * voltage_reference
+    step_voltage = step_pu * voltage_reference
+    tol = tol_factor * step_voltage
     lower = target - tol
-    upper = target + tol
+    upper = target + tol * 0.5  # Reducing the tolerance improves the sensitivity analysis
 
-    # Boolean array for raw signal
-    within_band = (y >= lower) & (y <= upper)
+    y_smooth = smooth_signal(y, window_size=mean_window)
+    within_band = ((y_smooth >= lower) & (y_smooth <= upper))
 
-    # -----------------------------
+    # POST-STEP REGION
+    post_step_indices = np.where(t >= step_time)[0]
+
+    if len(post_step_indices) == 0:
+        raise ValueError(
+            f"No samples found after step time "
+            f"{step_time: .3f} s."
+        )
+
     # PEAK
-    # -----------------------------
-    peak_idx = np.argmax(y)
-    peak_value = y[peak_idx]
+    peak_idx_local = np.argmax(y_smooth[post_step_indices])
+    peak_idx = post_step_indices[peak_idx_local]
+    peak_value = y_smooth[peak_idx]
     peak_time = t[peak_idx]
 
-    # -----------------------------
-    # FIRST ENTRY
-    # -----------------------------
+    # Maximum deviation above target
+    Xm = peak_value - target
+
+    # FIRST ENTRY INTO BAND
     first_entry_idx = None
-    for i in range(len(y)):
+    for i in post_step_indices:
         if within_band[i]:
             first_entry_idx = i
             break
-    first_entry_time = t[first_entry_idx] if first_entry_idx is not None else None
 
-    # -----------------------------
-    # SETTLING TIME USING SMOOTH SIGNAL
-    # -----------------------------
-    lower = target - tol * 0.5   # Reducing the tolerance improves the sensitivity analysis
-    upper = target + tol * 0.5
-    y_smooth = smooth_signal(y, window_size=settling_window)
-    within_band_smooth = (y_smooth >= lower) & (y_smooth <= upper)
+    if first_entry_idx is not None:
+        first_entry_time = t[first_entry_idx]
+        Tcr = first_entry_time - step_time
+    else:
+        first_entry_time = None
+        Tcr = None
 
+    # SETTLING TIME
     settling_idx = None
-    for i in range(len(y_smooth)):
-        if within_band_smooth[i] and np.all(within_band_smooth[i:]):
+
+    for i in post_step_indices:
+        if within_band[i] and np.all(within_band[i:]):
             settling_idx = i
             break
 
-    settling_time = t[settling_idx] if settling_idx is not None else None
+    if settling_idx is not None:
+        settling_time = t[settling_idx]
+        Tcs = settling_time - step_time
+    else:
+        settling_time = None
+        Tcs = None
 
-    # -----------------------------
-    # RETURN RESULTS
-    # -----------------------------
-    result_df = df.iloc[-1:].copy()
-    result_df["Tcr"] = round(first_entry_time - step_time, 3)
-    result_df["Tcs"] = round(settling_time - step_time, 3)
-    result_df["Xm"] = round(peak_value - target, 2)
-    result_df["Vdc_ss"] = round(df[signal_col][-10:].mean(), 2)
-    result_df = result_df.drop(columns=["TIME", "Vdc"])
+    # STEADY-STATE VOLTAGE
+    Vdc_ss = df[signal_col].iloc[-50:].mean()
+
+    # RESULT
+    Xm_limit = 0.004 * voltage_reference
+    passed = (
+            pd.notna(Tcr) and
+            pd.notna(Tcs) and
+            Tcr <= 0.2 and    # Tcr <= 0.2 s
+            Tcs <= 0.3 and    # Tcs <= 0.3 s
+            Xm <= Xm_limit
+    )
+
+    # SUMMARISE RESULTS
+    result_df = df.iloc[[-1]].copy()
+    result_df["Tcr"] = (round(Tcr, 3) if Tcr is not None else np.nan)
+    result_df["Tcs"] = (round(Tcs, 3) if Tcs is not None else np.nan)
+    result_df["Xm"] = round(Xm, 2)
+    result_df["Vdc_ss"] = round(Vdc_ss, 2)
+    result_df["Result"] = "Pass" if passed else "Fail"
+    result_df = result_df.drop(columns=[time_col, signal_col], errors="ignore")
     result_df.reset_index(drop=True, inplace=True)
+    return result_df
 
+
+def analyse_step_down_voltage_signal_for_sa(
+        file_path,
+        step_time,
+        time_col="TIME",
+        signal_col="Vdc",
+        step_pu=0.02,
+        tol_factor=0.05,
+        voltage_reference=640.0,
+        mean_window=100
+):
+    """
+    Analyse a step-down voltage signal from a CSV file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the CSV file.
+    step_time : float
+        Time at which the voltage step is applied.
+    time_col : str
+        Name of the time column.
+    signal_col : str
+        Name of the voltage signal column.
+    step_pu : float
+        Magnitude of the voltage step in per-unit.
+    tol_factor : float
+        Fraction of the step magnitude used as the settling tolerance.
+    voltage_reference : float
+        Initial/reference DC voltage.
+    mean_window : int
+        Window size used for signal smoothing.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame containing R, L, C, Tcr, Tcs, Xm, Vdc_ss and Result.
+    """
+
+    # LOAD DATA
+    df = pd.read_csv(file_path)
+    start_idx = df.index[df[time_col] >= step_time]
+
+    if len(start_idx) == 0:
+        raise ValueError(
+            f"No data found at or after {step_time: .3f} s."
+        )
+
+    start_position = df.index.get_loc(start_idx[0])
+    df = df.iloc[start_position:].copy()
+
+    # EXTRACT R, L AND C FROM FILE NAME
+    file_name = str(file_path).replace("\\", "/").split("/")[-1]
+
+    try:
+        parts = file_name.split("_")
+
+        df["R_ohms"] = float(parts[-2][1:])
+        df["H_mH"] = float(parts[-4][1:])
+        df["C_uF"] = float(parts[-3][1:])
+    except (IndexError, ValueError):
+        raise ValueError(f"Could not extract R, L and C from file name: {file_name}")
+
+    # SIGNAL DATA
+    t = df[time_col].to_numpy()
+    y = df[signal_col].to_numpy()
+
+    if len(y) == 0:
+        raise ValueError("The signal contains no data.")
+
+    y_smooth = smooth_signal(y, window_size=mean_window)
+
+    # TARGET VALUE
+    target = (1.0 - step_pu) * voltage_reference
+
+    # Step magnitude
+    step_magnitude = step_pu * voltage_reference
+
+    # Tolerance = tol_factor × step magnitude
+    tol = tol_factor * step_magnitude
+
+    lower = target - tol * 0.5   # Reducing the tolerance improves the sensitivity analysis
+    upper = target + tol
+
+    # TOLERANCE BAND
+    within_band = ((y_smooth >= lower) & (y_smooth <= upper))
+
+    # MINIMUM VOLTAGE / OVERSHOOT
+    min_idx = np.argmin(y_smooth)
+
+    min_value = y_smooth[min_idx]
+    min_time = t[min_idx]
+
+    # Voltage deviation below target
+    Xm = target - min_value
+
+    # TIME TO ENTER TOLERANCE BAND
+    fall_idx = None
+
+    for i in range(len(y_smooth)):
+        if within_band[i]:
+            fall_idx = i
+            break
+
+    if fall_idx is not None:
+        fall_time = t[fall_idx]
+        Tcr = fall_time - step_time
+    else:
+        Tcr = np.nan
+
+    # SETTLING TIME
+    settling_idx = None
+
+    for i in range(len(y_smooth)):
+        if within_band[i] and np.all(within_band[i:]):
+            settling_idx = i
+            break
+
+    if settling_idx is not None:
+        settling_time = t[settling_idx]
+        Tcs = settling_time - step_time
+    else:
+        Tcs = np.nan
+
+    # STEADY-STATE VOLTAGE
+    Vdc_ss = df[signal_col].iloc[-50:].mean()
+
+    # RESULT
+    Xm_limit = 0.004 * voltage_reference
+    passed = (
+            pd.notna(Tcr) and
+            pd.notna(Tcs) and
+            Tcr <= 0.2 and  # Tcr <= 0.2 s
+            Tcs <= 0.3 and  # Tcs <= 0.3 s
+            Xm <= Xm_limit
+    )
+
+    # CREATE RESULT DATAFRAME
+    result_df = df.iloc[[-1]].copy()
+    result_df["Tcr"] = round(Tcr, 3) if pd.notna(Tcr) else np.nan
+    result_df["Tcs"] = round(Tcs, 3) if pd.notna(Tcs) else np.nan
+    result_df["Xm"] = round(Xm, 2)
+    result_df["Vdc_ss"] = round(Vdc_ss, 2)
+    result_df["Result"] = "Pass" if passed else "Fail"
+    result_df.drop(columns=[time_col, signal_col], inplace=True, errors="ignore")
+    result_df.reset_index(drop=True, inplace=True)
     return result_df

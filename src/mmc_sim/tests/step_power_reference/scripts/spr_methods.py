@@ -251,7 +251,12 @@ def parameter_sweep_run(rl_params: Dict[str, List[float]]):
     return
 
 
-def summarise_results(res_file: str, step_time: float, p_set: float, nominal_mva: float) -> pd.DataFrame:
+def summarise_results(
+    res_file: str,
+    step_time: float,
+    p_set: float,
+    nominal_mva: float
+) -> pd.DataFrame:
     """
     Check the steady-state active power error following a power step.
 
@@ -274,21 +279,57 @@ def summarise_results(res_file: str, step_time: float, p_set: float, nominal_mva
 
     df = pd.read_csv(res_file)
 
+    # Check required columns
+    required_columns = {"TIME", "Pac"}
+    missing_columns = required_columns - set(df.columns)
+
+    if missing_columns:
+        raise ValueError(
+            f"Missing required columns: {', '.join(sorted(missing_columns))}"
+        )
+
+    if nominal_mva <= 0:
+        raise ValueError("nominal_mva must be greater than zero.")
+
+    # Extract L and R from filename
     filename = Path(res_file).stem
     parts = filename.split("_")
 
-    H = float(parts[-3][1:])
-    R = float(parts[-2][1:])
+    try:
+        L = float(parts[-3][1:])
+        R = float(parts[-2][1:])
+    except (IndexError, ValueError):
+        raise ValueError(
+            f"Could not extract R and L from file name: {filename}"
+        )
 
-    # First sample 0.5 s after the step
-    steady_state_idx = df.index.get_loc(df.index[df["TIME"] >= (step_time + 0.5)][0])
+    # Find the first sample 0.75 s after the step
+    steady_state_points = df.index[
+        df["TIME"] >= (step_time + 0.75)
+    ]
 
+    if len(steady_state_points) == 0:
+        raise ValueError(
+            f"No data found at or after {step_time + 0.75:.3f} s."
+        )
+
+    steady_state_idx = df.index.get_loc(steady_state_points[0])
+
+    # Calculate average steady-state active power
     p_ss = df["Pac"].iloc[steady_state_idx:].mean()
-    delta_p_ss = abs(abs(p_ss) - abs(p_set)) / nominal_mva
+
+    # Steady-state error in pu
+    delta_p_ss = (
+        abs(abs(p_ss) - abs(p_set)) / nominal_mva
+    )
+
+    # Pass/fail criterion
+    result = "Pass" if delta_p_ss <= 0.002 else "Fail"
 
     return pd.DataFrame({
-        "H_mH": [H],
+        "L_mH": [L],
         "R_ohms": [R],
-        "Pss_pu": [round(p_ss, 3)],
+        "Pss_pu": [round(abs(p_ss) / nominal_mva, 3)],
         "Delta_Pss": [round(delta_p_ss, 3)],
+        "Result": [result]
     })

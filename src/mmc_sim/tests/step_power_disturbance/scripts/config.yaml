@@ -3,13 +3,14 @@ power_dist_step:
   name: MMC_step_power_disturbance
   mva: 1200
   fn: 50
+  DC_reference_voltage: 640
   ac_voltage: 400
-  initial_power: 700
-  final_power: 800
+  initial_power: 800
+  final_power: 700
   SCR: 10
   XR: 10
-  step_time: 3.
-  time_duration: 5
+  step_time: 2.5
+  time_duration: 3.5
   sample_step: 100
   time_step: 10
   components:
@@ -18,4 +19,4 @@ power_dist_step:
   results:
     file_name: step_p_dist_response
     result_file: ../pscad_model/MMC_step_power_disturbance.gf46
-    save_path: ../output/simulation_results/step_up_power_disturbance_response
+    save_path: ../output/simulation_results/step_down_power_disturbance_response
