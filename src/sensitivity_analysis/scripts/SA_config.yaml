@@ -25,4 +25,4 @@ sensitivity_analysis:
   output:
     sample_data: ../output/sample_data/sample_data.csv
     sample_data_dir: ../output/sample_data
-    sim_data: ../output/sample_data/SA_step_up_u_ref_response_summary.csv
+    sim_data_dir: ../output/simulation_results/step_up_voltage_ref_response/sim_summary

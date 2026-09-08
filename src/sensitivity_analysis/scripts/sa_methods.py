@@ -1,3 +1,5 @@
+import glob
+
 import yaml
 import chaospy as cp
 from sklearn.metrics import r2_score
@@ -101,7 +103,15 @@ def save_samples(dataframe: pd.DataFrame, output_directory: Path, filename="samp
     return output_file
 
 
-def load_dataset(sample_file: Path, result_file: Path):
+def post_process_pscad_sim_results(file_path: Path) -> pd.DataFrame:
+    files = glob.glob(f"{file_path}\\*.csv")
+    l_df = [pd.read_csv(file) for file in files]
+    df = pd.concat(l_df)
+    df.reset_index(drop=True, inplace=True)
+    return df
+
+
+def load_dataset(sample_file: Path, config_file: str):
     """
     Load and merge simulation input/output data.
 
@@ -110,8 +120,8 @@ def load_dataset(sample_file: Path, result_file: Path):
     sample_file:
         Generated sensitivity samples.
 
-    result_file:
-        PSCAD response summary.
+    config_file:
+        YAML file containing file paths.
 
     Returns
     -------
@@ -120,17 +130,20 @@ def load_dataset(sample_file: Path, result_file: Path):
     """
     pce_logger.info("Loading sample and simulation data")
     samples = pd.read_csv(sample_file)
-    results = pd.read_csv(result_file)
+
+    cfg = load_config_file(config_file)
+    sim_results_folder = Path(cfg["sensitivity_analysis"]["output"]["sim_data_dir"])
+    sim_summary_df = post_process_pscad_sim_results(sim_results_folder)
 
     # Select required simulation outputs
-    results = results[["H_mH", "C_uF", "R_ohms", "Xm", "Tcr", "Tcs"]]
+    sim_summary_df = sim_summary_df[["L_mH", "C_uF", "R_ohms", "Xm", "Tcr", "Tcs"]]
     dataset = samples.merge(
-        results,
+        sim_summary_df,
         left_on=["L", "C", "R"],
-        right_on=["H_mH", "C_uF", "R_ohms"],
+        right_on=["L_mH", "C_uF", "R_ohms"],
         how="inner"
     )
-    dataset.drop(columns=["H_mH", "C_uF", "R_ohms"], inplace=True)
+    dataset.drop(columns=["L_mH", "C_uF", "R_ohms"], inplace=True)
 
     # Convert mH to H
     dataset["L"] /= 1000
@@ -232,7 +245,7 @@ def sample_data_emt_run(sample_data_path: str, plot_results: bool = False):
     dc_network = ConfigDCGridComponents(dc_grid_components)
     sample_data_df = pd.read_csv(sample_data_path)
     for _, row in sample_data_df.iterrows():
-        dc_grid_params = {"R": row["R"], "L": round(row["L"] / 1000, 6), "C": row["C"]}  # inductance in H
+        dc_grid_params = {"R": row["R"], "L": round(row["L"] / 1000, 6), "C": row["C"]}  # convert inductance to H
         dc_network.set_dc_network(
             **dc_grid_params
         )
@@ -242,7 +255,10 @@ def sample_data_emt_run(sample_data_path: str, plot_results: bool = False):
         emt_sim_logger.info(f"Running simulation for {dc_grid_params}")
 
         result_df = simulation.run(cfg["result_file"])
+
+        # Ensure grid parameter values are exactly the same as those in the sample data
         new_file_name = format_rlc_filename(**dc_grid_params, file_name=cfg["output_file"])
+
         move_result_file(result_df, cfg["save_path"] / "sim_timeseries", new_file_name)
         if cfg["u_step"] > cfg["uref"]:
             result_summary = analyse_step_up_voltage_signal_for_sa(cfg["save_path"] / "sim_timeseries" / new_file_name,

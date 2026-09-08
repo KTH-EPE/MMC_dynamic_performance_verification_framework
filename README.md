@@ -1,10 +1,13 @@
 # InterOPERA MMC Dynamic Tests Verification Framework
 
 This repository provides an automated Python-based workflow for running and managing PSCAD simulations to assess the 
-dynamic performance compliance of modular multi-level converters (MMCs) to the functional requirements stipulated in 
-InterOPERA D2.1. A methodology for performing sensitivity analysis based on the Sobol' algorithm with a surrogate model (Bayessian 
-Sparse Polynomial Chaos Expansion: BSPCE is also included.)
-The framework supports parameter sweeps with systematic data export and post-processing.
+dynamic performance compliance of modular multilevel converters (MMCs) with the functional requirements specified in 
+InterOPERA D2.1. It also includes a sensitivity analysis methodology based on the Sobol’ algorithm and a surrogate model 
+using Bayesian Sparse Polynomial Chaos Expansion (BSPCE).
+
+The framework supports parameter sweeps with systematic data export and post-processing. For each test, time-series data 
+are exported as .csv files for further analysis, while a summary indicates whether the converter passes or fails the 
+test. Control responses can also be visualised where appropriate.
 
 ---
 
@@ -88,7 +91,7 @@ MMC_Verification_Framework/
 
 ---
 ## 3. Experiment Types
-- N.B: Manually launch PSCAD before initiating any test
+- N.B: Manually launch PSCAD before initiating any test. This approach is adopted to avoid license and windows defender issues.
 ### 3.1 Step Voltage Disturbance Response
 - File: `run_step_voltage_disturbance_response.py`
 - Purpose: To assess the open-loop quasi-static behavior of active power response to changes in DC voltage
@@ -160,6 +163,7 @@ Given the automation constraints in PSCAD,
 - Real constants in PSCAD for the power references should be named Pref_init, and P_ref_step for the initial and final 
 power after a step respectively.
 - Real constants in PSCAD for the voltage reference should be named "uref" and the final voltage after a step, "u_step".
+- Ensure that any library objects referenced in the scripts are named appropriately.
 - The source code should be adapted accordingly for different choices of parameter/component names and these parameters 
 should be accessible on the main canvas of PSCAD.
 ---
@@ -193,7 +197,7 @@ Run the tests in "mmc_tests" as desired
 For sensitivity analysis, a different virtual environment is required due to conflicts in dependency versions.
 Change the directory to "sensitivity_analysis"
 
-`cd "MMC_model\\src\\sensitivity_analysis"`
+`cd "src\\sensitivity_analysis"`
 
 Activate the virtual environment
 
@@ -201,17 +205,14 @@ Activate the virtual environment
 
 Run `poetry install` to install dependencies. Poetry should already be installed in your system.
 
-A numpy version < 2 should be installed. `Numpoly` should also be installed. In the event of issues, try 
+A numpy version < 2.0 should be installed. `Numpoly` should also be installed. In the event of issues, try 
 `pip install --only-binary=:all: numpoly` followed by the installation of chaospy (`pip install chaospy`).
 
 You'll then be ready to perform sensitivity analysis.
 
+
 ---
 
-## 8. Result analyses
-- Notebooks for the processing of the results are included in the result_analysis directory
----
-
-## 9. License
+## 8. License
 
 For academic and research use only (update as needed).

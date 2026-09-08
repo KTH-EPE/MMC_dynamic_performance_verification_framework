@@ -14,16 +14,18 @@ from sa_methods import *
 def run_analysis(config_file):
     cfg = load_config_file(config_file)
     sample_data = Path(cfg["sensitivity_analysis"]["output"]["sample_data"])
-    sim_summary_data = Path(cfg["sensitivity_analysis"]["output"]["sim_data"])
-    dataset = load_dataset(sample_data, sim_summary_data)
+    dataset = load_dataset(sample_data, config_file)
 
     # Inputs
     X = dataset[["L", "C", "R", "SCR", "XR"]].values
 
     # Output response
     Y = dataset["Xm"].values  # "Tcr", "Tcs", "Xm"  Each parameter is evaluated separately.
+
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=13)
+
     distribution = create_distribution()
+
     model = train_pce(X_train, Y_train, order=3, distribution=distribution)
     metrics = evaluate_model(model, X_train, X_test, Y_train, Y_test)
 
