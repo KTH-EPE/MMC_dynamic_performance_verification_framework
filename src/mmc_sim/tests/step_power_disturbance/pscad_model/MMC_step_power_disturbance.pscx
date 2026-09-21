@@ -24,7 +24,7 @@
     <param name="Check" value="0" />
     <param name="Debug" value="0" />
     <param name="description" value="" />
-    <param name="revisor" value="geraldck, 1784407278" />
+    <param name="revisor" value="geraldck, 1789546731" />
     <param name="fortran_version" value="$(DefaultCompilerKey)" />
     <param name="c_version" value="$(DefaultCKey)" />
     <param name="matlab_version" value="$(DefaultMatlabKey)" />
@@ -10853,7 +10853,7 @@
         </Wire>
       </schematic>
     </Definition>
-    <Definition classid="UserCmpDefn" name="Main" id="1468968198" group="" url="" version="" build="" crc="42412461" view="false" date="1784327038">
+    <Definition classid="UserCmpDefn" name="Main" id="1468968198" group="" url="" version="" build="" crc="114956241" view="false" date="1784327038">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -11251,7 +11251,7 @@
               <param name="ymin" value="-2.0" />
               <param name="ymax" value="2.0" />
             </paramlist>
-            <Curve classid="Curve" id="1774015090" name="Idc" link="887450504" color="0" bold="1" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
+            <Curve classid="Curve" id="1774015090" name="Idc" link="887450504" color="0" bold="0" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
               <path />
             </Curve>
           </Graph>
@@ -11471,7 +11471,7 @@
               <param name="ymin" value="-2.0" />
               <param name="ymax" value="2.0" />
             </paramlist>
-            <Curve classid="Curve" id="1936286059" name="Pac" link="1277339489" color="0" bold="1" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
+            <Curve classid="Curve" id="1936286059" name="Pac" link="1277339489" color="0" bold="0" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
               <path />
             </Curve>
             <Curve classid="Curve" id="1792550773" name="P_DC" link="2001829709" color="0" bold="0" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
@@ -11695,8 +11695,8 @@
             <param name="Xt" value="0.16" />
             <param name="fn" value="50" />
             <param name="TBL" value="111.00005" />
-            <param name="Pn" value="1000" />
-            <param name="Qn" value="200" />
+            <param name="Pn" value="1200" />
+            <param name="Qn" value="1200" />
             <param name="PF" value="1" />
             <param name="Pref" value="Pref" />
             <param name="Qref" value="0" />
@@ -17684,7 +17684,7 @@ Output]]></segment>
         </User>
       </schematic>
     </Definition>
-    <Definition classid="UserCmpDefn" name="DC_Voltage_Controller_32_1" group="" url="" version="" build="" crc="30562705" instances="0" key="" view="false" date="1784322630" id="21460816">
+    <Definition classid="UserCmpDefn" name="DC_Voltage_Controller_32_1" group="" url="" version="" build="" crc="1337649" instances="0" key="" view="false" date="1784322630" id="21460816">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -17709,7 +17709,7 @@ Output]]></segment>
             <help />
             <vis />
           </parameter>
-          <parameter name="Touter" desc="Time to enable controller (Toutert)" type="Real" group="" helpmode="Append" content_type="Constant" intent="Input" dim="1" animate="false" unit="" min="-1E+308" max="1E+308">
+          <parameter name="Touter" desc="Time to enable controller (Touter)" type="Real" group="" helpmode="Append" content_type="Constant" intent="Input" dim="1" animate="false" unit="" min="-1E+308" max="1E+308">
             <value><![CDATA[0.3]]></value>
             <cond><![CDATA[true]]></cond>
             <vis><![CDATA[true]]></vis>
@@ -18520,10 +18520,10 @@ Output]]></segment>
               <param name="ymin" value="-1" />
               <param name="ymax" value="1" />
             </paramlist>
-            <Curve classid="Curve" id="275220657" name="Vdc_ref" link="1376471674" color="0" bold="1" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
+            <Curve classid="Curve" id="275220657" name="Vdc_ref" link="1376471674" color="0" bold="0" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
               <path />
             </Curve>
-            <Curve classid="Curve" id="174048162" name="Vdc" link="722750714" color="0" bold="1" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
+            <Curve classid="Curve" id="174048162" name="Vdc" link="722750714" color="0" bold="0" show="-1" mode="0" gradient="false" transparency="255" thresh="0.5" above="High" below="Low" style="0">
               <path />
             </Curve>
           </Graph>
@@ -31904,7 +31904,7 @@ Output]]></segment>
         </Gfx>
       </graphics>
     </Definition>
-    <Definition classid="UserCmpDefn" name="CONVERTER102_1" group="" url="" version="" build="" crc="7481587" instances="0" key="" view="false" date="1784196878" id="1398964560">
+    <Definition classid="UserCmpDefn" name="CONVERTER102_1" group="" url="" version="" build="" crc="19372479" instances="0" key="" view="false" date="1784196878" id="1398964560">
       <paramlist name="">
         <param name="Description" value="" />
       </paramlist>
@@ -35829,7 +35829,7 @@ Output]]></segment>
           </paramlist>
         </User>
         <User classid="UserCmp" name="MMC_step_voltage_reference:DC_Voltage_Controller_32_1" id="815297263" x="342" y="972" w="267" h="71" z="280" orient="0" defn="MMC_step_power_disturbance:DC_Voltage_Controller_32_1" link="-1" q="4" disable="false">
-          <paramlist link="-1" name="" crc="108610904">
+          <paramlist link="-1" name="" crc="111127465">
             <param name="Name" value="" />
             <param name="DBlk" value="0" />
             <param name="Kpq" value="0" />
@@ -37353,7 +37353,7 @@ Output]]></segment>
   </List>
   <List classid="Template" />
   <hierarchy>
-    <call link="1655142810" name="MMC_step_power_disturbance:DS" z="-1" view="false" instance="0">
+    <call link="1506046647" name="MMC_step_power_disturbance:DS" z="-1" view="false" instance="0">
       <call link="866498961" name="MMC_step_power_disturbance:Main" z="-1" view="true" instance="0">
         <call link="609475367" name="MMC_step_power_disturbance:CONVERTER253" z="80" view="false" instance="0" />
         <call link="1163400029" name="MMC_step_power_disturbance:CONVERTER102_1" z="170" view="false" instance="0">
