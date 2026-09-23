@@ -175,10 +175,6 @@ Clone the project using
 
 `git clone <repo-url>`
 
-Change the directory to the "\MMC_verification_framework"
-
- `cd \MMC_verification_framework`
-
 Install Poetry (if not already installed):
 
 `pip install poetry`
