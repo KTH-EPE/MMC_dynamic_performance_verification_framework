@@ -8,7 +8,7 @@ from typing import Dict, List
 from src.mmc_sim.core.config import Config
 from src.mmc_sim.core.pscad import PSCADModel
 from src.mmc_sim.core.config_components import ConfigDCGridComponents
-from src.mmc_sim.core.simulation import Simulation
+from src.mmc_sim.core.run_simulation import RunSimulation
 from src.mmc_sim.core.parameter_sweep import ParameterSweep
 from src.mmc_sim.core.misc import *
 from src.mmc_sim.core.logger import setup_logger
@@ -167,7 +167,7 @@ def single_run(rl_params: Dict[str, float], plot_results: bool = True):
     dc_network = ConfigDCGridComponents(dc_grid_components)
     dc_network.set_dc_network(**rl_params)
     logger.info(f"Running simulation for {rl_params}")
-    simulation = Simulation(model)
+    simulation = RunSimulation(model)
     result_df = simulation.run(cfg["result_file"])
     new_file_name = format_rl_filename(**rl_params, file_name=cfg["output_file"])
     move_result_file(result_df, cfg["save_path"] / "sim_timeseries", new_file_name)
@@ -232,7 +232,7 @@ def parameter_sweep_run(rl_params: Dict[str, List[float]], plot_results: bool = 
             **params
         )
 
-        simulation = Simulation(model)
+        simulation = RunSimulation(model)
         logger.info(f"Running simulation for {params}")
         result_df = simulation.run(cfg["result_file"])
         new_file_name = format_rl_filename(**params, file_name=cfg["output_file"])

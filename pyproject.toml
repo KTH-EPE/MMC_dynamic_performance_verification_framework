@@ -1,21 +1,26 @@
 [project]
-name = "mmc-model"
+name = "InterOPERA_MMC_verification_framework"
 version = "0.1.0"
 description = "Simulation and analysis of standalone MMC dynamic tests for interoperability"
 authors = [
     {name = "CGerald13",email = "kpugerald@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = "3.10.5"
 dependencies = [
-    "pandas (>=3.0.2,<4.0.0)",
     "matplotlib (>=3.10.8,<4.0.0)",
     "mhi-pscad (>=3.1.1,<4.0.0)",
     "pyyaml (>=6.0.3,<7.0.0)",
+    "pandas (<3.0.0)",
+    "numpy (==2.2.6)",
+    "numpoly (==1.2.14)",
+    "chaospy (==4.3.21)",
+    "scikit-learn (==1.7.2)",
+    "salib (>=1.6.0,<2.0.0)",
 ]
 
 [tool.poetry]
-packages = [{include = "mmc_model", from = "src"}]
+packages = [{include = "mmc_sim", from = "src"}]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

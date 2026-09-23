@@ -2,7 +2,7 @@ from pathlib import Path
 from mhi.pscad.utilities.file import OutFile
 
 
-class Simulation:
+class RunSimulation:
 
     def __init__(
             self,

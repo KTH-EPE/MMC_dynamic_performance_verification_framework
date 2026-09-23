@@ -5,7 +5,7 @@ import pandas as pd
 from src.mmc_sim.core.config import Config
 from src.mmc_sim.core.pscad import PSCADModel
 from src.mmc_sim.core.config_components import ConfigDCGridComponents
-from src.mmc_sim.core.simulation import Simulation
+from src.mmc_sim.core.run_simulation import RunSimulation
 from src.mmc_sim.core.parameter_sweep import ParameterSweep
 from src.mmc_sim.core.misc import *
 from src.mmc_sim.core.logger import setup_logger
@@ -156,7 +156,7 @@ def single_run(rlc_params: dict):
     dc_network = ConfigDCGridComponents(dc_grid_components)
     dc_network.set_dc_network(**rlc_params)
     logger.info(f"Running simulation for {rlc_params}")
-    simulation = Simulation(model)
+    simulation = RunSimulation(model)
     result_df = simulation.run(cfg["result_file"])
     new_file_name = format_rlc_filename(**rlc_params, file_name=cfg["output_file"])
     move_result_file(result_df, cfg["save_path"] / "sim_timeseries", new_file_name)
@@ -214,7 +214,7 @@ def parameter_sweep_run(rlc_params: dict):
             **params
         )
 
-        simulation = Simulation(model)
+        simulation = RunSimulation(model)
         logger.info(f"Running simulation for {params}")
         result_df = simulation.run(cfg["result_file"])
         new_file_name = format_rlc_filename(**params, file_name=cfg["output_file"])

@@ -111,7 +111,7 @@ def post_process_pscad_sim_results(file_path: Path) -> pd.DataFrame:
     return df
 
 
-def load_dataset(sample_file: Path, config_file: str):
+def load_dataset(sample_file: Path, config_file: Path):
     """
     Load and merge simulation input/output data.
 
@@ -250,7 +250,7 @@ def sample_data_emt_run(sample_data_path: str, plot_results: bool = False):
             **dc_grid_params
         )
 
-        simulation = Simulation(model)
+        simulation = RunSimulation(model)
 
         emt_sim_logger.info(f"Running simulation for {dc_grid_params}")
 

@@ -7,11 +7,16 @@ in the config file. The sensitivity of each KPI is evaluated separately, so upda
 """
 
 from sklearn.model_selection import train_test_split
-from sa_methods import *
+
+from sa_methods import load_dataset, Path, load_config_file, create_distribution, train_pce, evaluate_model, \
+    calculate_sobol_indices, pce_logger, CONFIG_FILE
 
 
 # Main analysis pipeline
-def run_analysis(config_file):
+def run_analysis(config_file: Path, test_kpi: str):
+    """
+    Each KPI ("Tcr", "Tcs", "Xm") is evaluated separately. So, update accordingly.
+    """
     cfg = load_config_file(config_file)
     sample_data = Path(cfg["sensitivity_analysis"]["output"]["sample_data"])
     dataset = load_dataset(sample_data, config_file)
@@ -20,7 +25,7 @@ def run_analysis(config_file):
     X = dataset[["L", "C", "R", "SCR", "XR"]].values
 
     # Output response
-    Y = dataset["Xm"].values  # "Tcr", "Tcs", "Xm"  Each parameter is evaluated separately.
+    Y = dataset[test_kpi].values
 
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=13)
 
@@ -39,6 +44,8 @@ def run_analysis(config_file):
 
 
 if __name__ == "__main__":
-    results_summary = run_analysis("SA_config.yaml")
-    print(results_summary["metrics"])
+
+    kpi = "Xm"  # "Tcr", "Tcs", "Xm"  Update as necessary.
+
+    results_summary = run_analysis(CONFIG_FILE, kpi)
     print(results_summary["sobol"])

@@ -1,4 +1,4 @@
-# InterOPERA MMC Dynamic Performance Verification Framework
+# MMC Dynamic Performance Verification Framework
 
 This repository provides an automated Python-based workflow for running and managing PSCAD simulations to assess the 
 dynamic performance compliance of modular multilevel converters (MMCs) with the functional requirements specified in 
@@ -169,16 +169,15 @@ should be accessible on the main canvas of PSCAD.
 ---
 
 ## 7. Requirements & Installation
-### 7.1 Python environment management (Poetry)
 
-This project uses Poetry for dependency management and environment isolation.
+This project uses Poetry for dependency management and environment isolation. It is compatible with Python 3.10.
 Clone the project using
 
 `git clone <repo-url>`
 
-Change the directory to the "MMC_model"
+Change the directory to the "\MMC_verification_framework"
 
- `cd MMC_model`
+ `cd \MMC_verification_framework`
 
 Install Poetry (if not already installed):
 
@@ -190,25 +189,9 @@ Then install all dependencies:
 
 Activate the environment:
 
-`.venv\Scripts\activate`
+`.venv\Scripts\activate` or `poetry env activate`
 
-Run the tests in "mmc_tests" as desired
-
-For sensitivity analysis, a different virtual environment is required due to conflicts in dependency versions.
-Change the directory to "sensitivity_analysis"
-
-`cd "src\\sensitivity_analysis"`
-
-Activate the virtual environment
-
-`.venv\Scripts\activate`
-
-Run `poetry install` to install dependencies. Poetry should already be installed in your system.
-
-A numpy version < 2.0 should be installed. `Numpoly` should also be installed. In the event of issues, try 
-`pip install --only-binary=:all: numpoly` followed by the installation of chaospy (`pip install chaospy`).
-
-You'll then be ready to perform sensitivity analysis.
+Run the tests in the "mmc_sim" directory as well as the sensitivity analysis in "sensitivity_analysis" directory as desired
 
 
 ---
