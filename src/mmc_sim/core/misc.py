@@ -19,11 +19,11 @@ def format_rlc_filename(R, L, C, file_name):
 
     Inductance is converted to mH for readability.
     """
-    return f"{file_name}_L{str(round(L * 1e3, 3))}_C{str(round(C, 3))}_R{str(round(R, 3))}_.csv"
+    return f"{file_name}_L{str(round(L, 3))}_C{str(round(C, 3))}_R{str(round(R, 3))}_.csv"
 
 
 def format_rl_filename(R, L, file_name):
     """
     Generate a standardized filename for RL simulations.
     """
-    return f"{file_name}_L{int(L * 1e3)}_R{int(R)}_.csv"
+    return f"{file_name}_L{str(round(L, 3))}_R{str(round(R, 3))}_.csv"

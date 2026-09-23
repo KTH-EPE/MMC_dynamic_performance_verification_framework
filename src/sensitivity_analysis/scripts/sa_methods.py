@@ -37,7 +37,7 @@ def define_sampling_problem():
     return {"num_vars": 5,
             "names": ["L", "C", "R", "SCR", "XR"],
             "bounds": [
-                [400.0, 800.0],  # L [mH]
+                [0.4, 0.8],  # L [H]
                 [800.0, 2100.0],  # C [uF]
                 [6.0, 10.0],  # R [Ohm]
                 [5.0, 15.0],  # SCR
@@ -136,17 +136,15 @@ def load_dataset(sample_file: Path, config_file: Path):
     sim_summary_df = post_process_pscad_sim_results(sim_results_folder)
 
     # Select required simulation outputs
-    sim_summary_df = sim_summary_df[["L_mH", "C_uF", "R_ohms", "Xm", "Tcr", "Tcs"]]
+    sim_summary_df = sim_summary_df[["L_H", "C_uF", "R_ohms", "Xm", "Tcr", "Tcs"]]
     dataset = samples.merge(
         sim_summary_df,
         left_on=["L", "C", "R"],
-        right_on=["L_mH", "C_uF", "R_ohms"],
+        right_on=["L_H", "C_uF", "R_ohms"],
         how="inner"
     )
-    dataset.drop(columns=["L_mH", "C_uF", "R_ohms"], inplace=True)
+    dataset.drop(columns=["L_H", "C_uF", "R_ohms"], inplace=True)
 
-    # Convert mH to H
-    dataset["L"] /= 1000
     pce_logger.info(f"Dataset size: {dataset.shape}")
     return dataset
 
@@ -325,7 +323,7 @@ def analyse_step_up_voltage_signal_for_sa(
     file_name = str(file_path).split("\\")[-1]
     try:
         df["R_ohms"] = float(file_name.split("_")[-2][1:])
-        df["L_mH"] = float(file_name.split("_")[-4][1:])
+        df["L_H"] = float(file_name.split("_")[-4][1:])
         df["C_uF"] = float(file_name.split("_")[-3][1:])
     except (IndexError, ValueError):
         raise ValueError(f"Could not extract R, L and C from file name: {file_name}")
@@ -475,7 +473,7 @@ def analyse_step_down_voltage_signal_for_sa(
         parts = file_name.split("_")
 
         df["R_ohms"] = float(parts[-2][1:])
-        df["L_mH"] = float(parts[-4][1:])
+        df["L_H"] = float(parts[-4][1:])
         df["C_uF"] = float(parts[-3][1:])
     except (IndexError, ValueError):
         raise ValueError(f"Could not extract R, L and C from file name: {file_name}")

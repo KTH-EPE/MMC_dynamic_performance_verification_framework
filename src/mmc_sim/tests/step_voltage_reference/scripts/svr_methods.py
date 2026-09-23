@@ -302,7 +302,7 @@ def analyse_step_up_voltage_signal(
     file_name = str(file_path).split("\\")[-1]
     try:
         df["R_ohms"] = float(file_name.split("_")[-2][1:])
-        df["L_mH"] = float(file_name.split("_")[-4][1:])
+        df["L_H"] = float(file_name.split("_")[-4][1:])
         df["C_uF"] = float(file_name.split("_")[-3][1:])
     except (IndexError, ValueError):
         raise ValueError(f"Could not extract R, L and C from file name: {file_name}")
@@ -727,7 +727,7 @@ def analyse_step_down_voltage_signal(
         parts = file_name.split("_")
 
         df["R_ohms"] = float(parts[-2][1:])
-        df["L_mH"] = float(parts[-4][1:])
+        df["L_H"] = float(parts[-4][1:])
         df["C_uF"] = float(parts[-3][1:])
     except (IndexError, ValueError):
         raise ValueError(f"Could not extract R, L and C from file name: {file_name}")

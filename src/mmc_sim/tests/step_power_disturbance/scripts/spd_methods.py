@@ -295,7 +295,7 @@ def summarise_results(
     result = "Pass" if vdc_max <= 0.05 else "Fail"
 
     return pd.DataFrame({
-        "L_mH": [L],
+        "L_H": [L],
         "C_uF": [C],
         "R_ohms": [R],
         "Xm_pu": [round(vdc_max, 4)],

@@ -369,7 +369,7 @@ def analyse_step_response(
 
     # SUMMARY
     summary_df = pd.DataFrame({
-        "L_mH": [L],
+        "L_H": [L],
         "R_ohms": [R],
         "t50_s": [t50],
         "t90_s": [t90],

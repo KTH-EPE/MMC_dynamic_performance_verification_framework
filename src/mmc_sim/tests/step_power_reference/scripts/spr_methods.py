@@ -327,7 +327,7 @@ def summarise_results(
     result = "Pass" if delta_p_ss <= 0.002 else "Fail"
 
     return pd.DataFrame({
-        "L_mH": [L],
+        "L_H": [L],
         "R_ohms": [R],
         "Pss_pu": [round(abs(p_ss) / nominal_mva, 3)],
         "Delta_Pss": [round(delta_p_ss, 3)],
