@@ -187,8 +187,9 @@ Activate the environment:
 
 `.venv\Scripts\activate` or `poetry env activate`
 
-Run the tests in the "mmc_sim" directory as well as the sensitivity analysis in "sensitivity_analysis" directory as desired
+Ensure that the `src` directory is marked as a "sources root" directory.
 
+Run the tests in the "mmc_sim" directory as well as the sensitivity analysis in "sensitivity_analysis" directory as desired
 
 ---
 
