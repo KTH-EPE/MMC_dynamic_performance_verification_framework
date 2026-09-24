@@ -243,7 +243,7 @@ def sample_data_emt_run(sample_data_path: str, plot_results: bool = False):
     dc_network = ConfigDCGridComponents(dc_grid_components)
     sample_data_df = pd.read_csv(sample_data_path)
     for _, row in sample_data_df.iterrows():
-        dc_grid_params = {"R": row["R"], "L": round(row["L"] / 1000, 6), "C": row["C"]}  # convert inductance to H
+        dc_grid_params = {"R": row["R"], "L": row["L"], "C": row["C"]}
         dc_network.set_dc_network(
             **dc_grid_params
         )
@@ -288,7 +288,7 @@ def analyse_step_up_voltage_signal_for_sa(
         step_pu=0.02,
         tol_factor=0.05,
         voltage_reference=640.0,
-        mean_window=100
+        mean_window=200
 ):
     """
     Analyse a step-up voltage signal from a CSV file.
@@ -339,7 +339,7 @@ def analyse_step_up_voltage_signal_for_sa(
     step_voltage = step_pu * voltage_reference
     tol = tol_factor * step_voltage
     lower = target - tol
-    upper = target + tol * 0.5  # Reducing the tolerance improves the sensitivity analysis
+    upper = target + tol
 
     y_smooth = smooth_signal(y, window_size=mean_window)
     within_band = ((y_smooth >= lower) & (y_smooth <= upper))
@@ -424,7 +424,7 @@ def analyse_step_down_voltage_signal_for_sa(
         step_pu=0.02,
         tol_factor=0.05,
         voltage_reference=640.0,
-        mean_window=100
+        mean_window=200
 ):
     """
     Analyse a step-down voltage signal from a CSV file.
@@ -496,7 +496,7 @@ def analyse_step_down_voltage_signal_for_sa(
     # Tolerance = tol_factor × step magnitude
     tol = tol_factor * step_magnitude
 
-    lower = target - tol * 0.5   # Reducing the tolerance improves the sensitivity analysis
+    lower = target - tol
     upper = target + tol
 
     # TOLERANCE BAND
