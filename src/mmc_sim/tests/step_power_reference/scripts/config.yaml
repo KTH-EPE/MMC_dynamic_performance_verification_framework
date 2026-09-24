@@ -19,5 +19,5 @@ step_power_ref:
     ac_grid_id: 2126013019
   results:
     file_name: step_p_ref_response
-    result_file: ../pscad_model/MMC_step_power_reference.gf46
+    result_file: ../pscad_model/MMC_step_power_reference.gf132
     save_path: ../output/simulation_results/step_up_power_ref_response

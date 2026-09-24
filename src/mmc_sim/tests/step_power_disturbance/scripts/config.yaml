@@ -18,5 +18,5 @@ power_dist_step:
     ac_grid_id: 609475367
   results:
     file_name: step_p_dist_response
-    result_file: ../pscad_model/MMC_step_power_disturbance.gf46
+    result_file: ../pscad_model/MMC_step_power_disturbance.gf132
     save_path: ../output/simulation_results/step_down_power_disturbance_response

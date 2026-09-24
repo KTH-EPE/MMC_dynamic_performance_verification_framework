@@ -18,5 +18,5 @@ step_voltage_ref:
     ac_grid_id: 13902648
   results:
     file_name: step_u_ref_response
-    result_file: ../pscad_model/MMC_step_voltage_reference.gf46
-    save_path: ../output/simulation_results/step_down_voltage_ref_response
+    result_file: ../pscad_model/MMC_step_voltage_reference.gf132
+    save_path: ../output/simulation_results/step_down_voltage_ref_responsexx

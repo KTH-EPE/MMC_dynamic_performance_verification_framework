@@ -19,5 +19,5 @@ step_voltage_dist:
     ac_grid_id: 1350091687
   results:
     file_name: step_p_ref_response
-    result_file: ../pscad_model/MMC_step_voltage_disturbance.gf46
+    result_file: ../pscad_model/MMC_step_voltage_disturbance.gf132
     save_path: ../output/simulation_results/step_up_voltage_dist_response

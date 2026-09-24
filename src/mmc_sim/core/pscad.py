@@ -8,10 +8,9 @@ class PSCADModel:
             project_path,
             project_name
     ):
-        self.app = mhi.pscad.application()
-
+        self.app = mhi.pscad.launch(settings={"ws_restore": False}, version="5.1.0")
         self.app.settings(
-            fortran_version="GFortran 4.6.2"
+            fortran_version="GFortran 13.2 (64-bit)",
         )
 
         self.app.load(
