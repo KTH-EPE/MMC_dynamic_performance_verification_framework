@@ -91,7 +91,6 @@ MMC_Verification_Framework/
 
 ---
 ## 3. Experiment Types
-- N.B: Manually launch PSCAD before initiating any test. This approach is adopted to avoid license and windows defender issues.
 ### 3.1 Step Voltage Disturbance Response
 - File: `run_step_voltage_disturbance_response.py`
 - Purpose: To assess the open-loop quasi-static behavior of active power response to changes in DC voltage
@@ -158,12 +157,15 @@ Separation of code and experiment setup
 ---
 
 ## 6. Important!
+- The framework is implemented using PSCAD 5.1.0 (64-bit)
+
 Given the automation constraints in PSCAD,
 - The DC grid RLC requivalent parameters should be named R_dc, L_dc, C_dc for the resistor, inductor, and capacitor respectively.
 - Real constants in PSCAD for the power references should be named Pref_init, and P_ref_step for the initial and final 
 power after a step respectively.
 - Real constants in PSCAD for the voltage reference should be named "uref" and the final voltage after a step, "u_step".
-- Ensure that any library objects referenced in the scripts are named appropriately.
+- The input level comparator for the step instant should be named "step_obj".
+- Ensure that any other library objects referenced in the scripts are named appropriately.
 - The source code should be adapted accordingly for different choices of parameter/component names and these parameters 
 should be accessible on the main canvas of PSCAD.
 ---
